@@ -1,0 +1,204 @@
+import SwiftUI
+import SwiftData
+import WidgetKit
+
+struct HomeView: View {
+    @Query(sort: \SessionPlan.sessionStart) private var plans: [SessionPlan]
+    @State private var showingEditor = false
+
+    private var hasIdiotHistory: Bool {
+        plans.contains { $0.verdict?.wasIdiot == true }
+    }
+
+    private var streakDays: Int {
+        let idiotDates = plans
+            .filter { $0.verdict?.wasIdiot == true }
+            .map(\.sessionStart)
+        return StreakService.daysSince(
+            lastIdiotDate: StreakService.lastIdiotDate(idiotVerdictSessionStarts: idiotDates),
+            firstUseDate: AppSettings.firstUseDate
+        )
+    }
+
+    private var activePlan: SessionPlan? {
+        plans.first { $0.status() == .active }
+    }
+
+    private var awaitingVerdict: [SessionPlan] {
+        plans.filter { $0.status() == .awaitingVerdict }
+    }
+
+    private var upcoming: [SessionPlan] {
+        plans.filter { $0.status() == .planned }
+    }
+
+    var body: some View {
+        NavigationStack {
+            List {
+                streakSection
+
+                if let plan = activePlan {
+                    Section("Session in progress") {
+                        NavigationLink(value: plan) {
+                            PlanRow(plan: plan, badge: "🍻 Live")
+                        }
+                    }
+                }
+
+                if !awaitingVerdict.isEmpty {
+                    Section("Time to face the music") {
+                        ForEach(awaitingVerdict) { plan in
+                            NavigationLink(value: plan) {
+                                PlanRow(plan: plan, badge: "🫣 Debrief due")
+                            }
+                        }
+                    }
+                }
+
+                Section("Upcoming sessions") {
+                    if upcoming.isEmpty {
+                        Text("Nothing planned. The Monkeys rest… for now.")
+                            .foregroundStyle(.secondary)
+                    }
+                    ForEach(upcoming) { plan in
+                        NavigationLink(value: plan) {
+                            PlanRow(plan: plan, badge: nil)
+                        }
+                    }
+                }
+
+                Section {
+                    NavigationLink {
+                        UnplannedDebriefView()
+                    } label: {
+                        Label("Rough morning, no plan? Confess", systemImage: "sunrise")
+                    }
+                } footer: {
+                    Text("Last night got away from you without a plan? The debrief still counts.")
+                }
+            }
+            .navigationTitle("Green Monkeys")
+            .navigationDestination(for: SessionPlan.self) { plan in
+                switch plan.status() {
+                case .planned:                    PlanDetailView(plan: plan)
+                case .active:                     SessionLiveView(plan: plan)
+                case .awaitingVerdict:            MorningAfterView(plan: plan)
+                case .completed:                  PlanDetailView(plan: plan)
+                }
+            }
+            .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    NavigationLink { HistoryView() } label: {
+                        Image(systemName: "chart.bar.doc.horizontal")
+                    }
+                }
+                ToolbarItem(placement: .topBarTrailing) {
+                    NavigationLink { SettingsView() } label: {
+                        Image(systemName: "gearshape")
+                    }
+                }
+                ToolbarItem(placement: .bottomBar) {
+                    Button {
+                        showingEditor = true
+                    } label: {
+                        Label("Plan a session", systemImage: "plus.circle.fill")
+                            .font(.headline)
+                    }
+                }
+            }
+            .sheet(isPresented: $showingEditor) {
+                NavigationStack { PlanEditorView() }
+            }
+            .onAppear {
+                pushWatchContext()
+                pushStreakSnapshot()
+            }
+        }
+    }
+
+    private var streakSection: some View {
+        Section {
+            VStack(spacing: 6) {
+                Text("Days since you were a\(anArticleSuffix) \(AppSettings.insultWord)")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                Text("\(streakDays)")
+                    .font(.system(size: 72, weight: .black, design: .rounded))
+                    .foregroundStyle(streakDays == 0 && hasIdiotHistory ? .red : .green)
+                Text(streakTagline)
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 12)
+        }
+    }
+
+    private var streakTagline: String {
+        if streakDays == 0 && hasIdiotHistory {
+            return "Rock bottom has a floor. Build on it."
+        }
+        if !hasIdiotHistory {
+            return "Clean record so far. The Monkeys are watching. 🐒"
+        }
+        return "Keep it going. 🐒"
+    }
+
+    private var anArticleSuffix: String {
+        let first = AppSettings.insultWord.lowercased().first
+        return "aeiou".contains(first ?? " ") ? "n" : ""
+    }
+
+    private func pushWatchContext() {
+        let tonight = activePlan ?? upcoming.first
+        let context = WatchContext(
+            streakDays: streakDays,
+            insultWord: AppSettings.insultWord,
+            sessionOccasion: tonight?.occasion,
+            sessionStart: tonight?.sessionStart,
+            commitments: tonight?.commitments.map(\.displayText) ?? []
+        )
+        PhoneConnectivityService.shared.push(context)
+    }
+
+    private func pushStreakSnapshot() {
+        let idiotDates = plans
+            .filter { $0.verdict?.wasIdiot == true }
+            .map(\.sessionStart)
+        StreakSnapshot(
+            anchorDate: StreakService.lastIdiotDate(idiotVerdictSessionStarts: idiotDates),
+            hasIdiotHistory: !idiotDates.isEmpty,
+            firstUseDate: AppSettings.firstUseDate,
+            insultWord: AppSettings.insultWord
+        ).save()
+        WidgetCenter.shared.reloadAllTimelines()
+    }
+}
+
+// MARK: - PlanRow
+
+struct PlanRow: View {
+    let plan: SessionPlan
+    let badge: String?
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            HStack {
+                Text(plan.occasion.isEmpty ? "A session" : plan.occasion)
+                    .font(.headline)
+                Spacer()
+                if let badge {
+                    Text(badge)
+                        .font(.caption.bold())
+                }
+            }
+            Text(plan.sessionStart.formatted(date: .abbreviated, time: .shortened))
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+            if !plan.commitments.isEmpty {
+                Text(plan.commitments.map { $0.kind.symbol }.joined(separator: " "))
+                    .font(.subheadline)
+            }
+        }
+    }
+}
