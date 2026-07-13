@@ -7,6 +7,7 @@ import WidgetKit
 /// still ends pointing forward (SPEC hard rule 5).
 struct MorningAfterView: View {
     @Environment(\.modelContext) private var modelContext
+    @Environment(\.dismiss) private var dismiss
     let plan: SessionPlan
 
     @AppStorage(SettingsKey.insultWord) private var insultWord = "idiot"
@@ -20,23 +21,75 @@ struct MorningAfterView: View {
     @State private var morningVideoFileName: String?
     @State private var showingCamera = false
     @State private var playingVideo: SessionVideo?
-    @State private var savedLine: String?
     @State private var crimeOptions: [String] = CatalogService.allCrimes
 
     private var isJudged: Bool { plan.verdict != nil }
 
+    /// Built from the saved verdict, so it also shows when revisiting a judged session.
+    private var roast: CharacterVoice.Roast? {
+        guard let verdict = plan.verdict else { return nil }
+        return CharacterVoice.roast(
+            score: verdict.effectiveScore,
+            crimes: verdict.crimes,
+            brokenPromises: plan.commitments.filter { $0.wasBroken == true }.count,
+            brutality: AppSettings.brutality,
+            word: insultWord
+        )
+    }
+
     var body: some View {
         List {
-            Section {
-                Text(CharacterVoice.monkeyMorningGreeting(
-                    brutality: AppSettings.brutality,
-                    word: insultWord
-                ))
-                .font(.headline)
-                Text(CharacterVoice.paranoiaMorningLine(brutality: AppSettings.brutality))
-                    .foregroundStyle(.secondary)
-            } header: {
-                Text("🐒🫣 The morning committee")
+            // Once judged, the roast leads and everything else becomes the appendix.
+            if let roast {
+                Section {
+                    Text(roast.opener)
+                        .font(.headline)
+                    ForEach(roast.charges, id: \.self) { charge in
+                        HStack(alignment: .top, spacing: 8) {
+                            Text("🚨")
+                            Text(charge)
+                        }
+                        .font(.subheadline)
+                    }
+                    if let promisesLine = roast.promisesLine {
+                        Text(promisesLine)
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                    }
+                } header: {
+                    Text("🐒 The roast")
+                }
+
+                Section {
+                    Text(roast.closer)
+                } header: {
+                    Text("And finally, monkey-free")
+                }
+
+                Section {
+                    Button {
+                        dismiss()
+                    } label: {
+                        Text("Finish — go face the day")
+                            .font(.headline)
+                            .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .listRowBackground(Color.clear)
+                    .listRowInsets(EdgeInsets())
+                }
+            } else {
+                Section {
+                    Text(CharacterVoice.monkeyMorningGreeting(
+                        brutality: AppSettings.brutality,
+                        word: insultWord
+                    ))
+                    .font(.headline)
+                    Text(CharacterVoice.paranoiaMorningLine(brutality: AppSettings.brutality))
+                        .foregroundStyle(.secondary)
+                } header: {
+                    Text("🐒🫣 The morning committee")
+                }
             }
 
             Section("The evidence") {
@@ -151,13 +204,6 @@ struct MorningAfterView: View {
                 Text("Shame fades by lunchtime; one concrete change doesn't.")
             }
 
-            if let savedLine {
-                Section {
-                    Text(savedLine)
-                        .font(.headline)
-                }
-            }
-
             if !isJudged {
                 Section {
                     Button {
@@ -264,10 +310,6 @@ struct MorningAfterView: View {
         }
         snapshot.save()
         WidgetCenter.shared.reloadAllTimelines()
-
-        let monkeyLine = score > 0
-            ? CharacterVoice.monkeyAfterIdiotVerdict(brutality: AppSettings.brutality, word: insultWord)
-            : CharacterVoice.monkeyAfterCleanVerdict(brutality: AppSettings.brutality, word: insultWord)
-        savedLine = "\(CharacterVoice.scoreGrading(score, word: insultWord))\n\n\(monkeyLine)"
+        // The roast section renders now that plan.verdict exists.
     }
 }

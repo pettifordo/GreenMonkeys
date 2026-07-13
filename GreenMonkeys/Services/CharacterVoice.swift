@@ -169,6 +169,99 @@ enum CharacterVoice {
         }
     }
 
+    // MARK: - The Roast
+
+    /// The post-verdict debrief: shaming with receipts, then a sincere exit line.
+    struct Roast: Equatable {
+        let opener: String
+        /// One line per confessed booze crime, in confession order.
+        let charges: [String]
+        let promisesLine: String?
+        /// Monkey-free. Escalates from "could do better" to the honest
+        /// "is alcohol giving more than it takes?" question on bad mornings.
+        let closer: String
+    }
+
+    static func roast(score: Int, crimes: [String], brokenPromises: Int, brutality: Brutality, word: String) -> Roast {
+        Roast(
+            opener: roastOpener(score: score, brutality: brutality, word: word),
+            charges: crimes.map { chargeLine(for: $0) },
+            promisesLine: promisesLine(brokenPromises: brokenPromises),
+            closer: roastCloser(score: score, crimeCount: crimes.count)
+        )
+    }
+
+    private static func roastOpener(score: Int, brutality: Brutality, word: String) -> String {
+        // Gentle keeps the plain grading; the Monkeys save the theatrics for the dial.
+        if brutality == .gentle {
+            return "\(score) out of 5. \(scoreGrading(score, word: word))"
+        }
+        let line: String
+        switch score {
+        case 0:  line = "Zero. The Monkeys checked twice. Nothing. Who ARE you?"
+        case 1:  line = "One out of five. A starter [WORD]. The Monkeys barely looked up from their tea."
+        case 2:  line = "Two out of five. A solid, professional [WORD] performance. Marks for consistency."
+        case 3:  line = "Three out of five. Weapons-grade. The Monkeys have opened a commemorative file."
+        case 4:  line = "Four out of five. The Monkeys are considering a documentary."
+        default: line = "Five. Out of five. A perfect score. The Monkeys are on their feet applauding, you magnificent [WORD]."
+        }
+        return line.replacing("[WORD]", with: word)
+    }
+
+    /// Bespoke jibe per built-in crime; customs get filed to the permanent record.
+    private static func chargeLine(for crime: String) -> String {
+        switch crime.lowercased() {
+        case "blacked out":
+            return "Blacked out: you lost actual hours of your life. The Monkeys saw all of it. They're not telling."
+        case "insulted someone":
+            return "Insulted someone: the insults were not as witty as they felt at the time. They never are."
+        case "offended someone":
+            return "Offended someone: offence given freely and generously. An apology tour may be required."
+        case "threw up":
+            return "Threw up: your stomach filed a formal complaint. So, possibly, did someone's shoes."
+        case "damaged a relationship":
+            return "Damaged a relationship: that one isn't funny, and you know it. Fix it today, not 'at some point'."
+        case "got in a fight":
+            return "Got in a fight: you're not in a film. You're a person with a back that hurts."
+        case "criminal offence":
+            return "Criminal offence: the Monkeys are a comedy act, not a legal defence."
+        case "drunk texting":
+            return "Drunk texting: the sent folder is a crime scene. Captain Paranoia has already read it twice."
+        case "lost phone / wallet / keys":
+            return "Lost property: you paid good money to misplace your own possessions. Bold strategy."
+        default:
+            return "\"\(crime)\": a new one for the collection. Added to your permanent record."
+        }
+    }
+
+    private static func promisesLine(brokenPromises: Int) -> String? {
+        guard brokenPromises > 0 else { return nil }
+        return brokenPromises == 1
+            ? "And one of sober-you's promises didn't survive the night. He keeps score, you know."
+            : "And \(brokenPromises) of sober-you's promises didn't survive the night. He keeps score, you know."
+    }
+
+    private static func roastCloser(score: Int, crimeCount: Int) -> String {
+        if score == 0 && crimeCount == 0 {
+            return "Whatever you did last night — bottle that instead."
+        }
+        if score >= 3 || crimeCount >= 3 {
+            return """
+            Could do better — you know that.
+
+            A word without the monkeys: if mornings like this are becoming a pattern, \
+            it's fair to ask whether alcohol is giving you more than it takes these days. \
+            Plenty of people try a month off and never look back. No pressure, no badge — \
+            just a door, open. There's a judgement-free place to start in Settings.
+            """
+        }
+        return """
+        Could do better. Next time, the plan is the boss.
+
+        Quiet question while the kettle's on: did the drinks past the plan actually add anything?
+        """
+    }
+
     // MARK: - Deletion friction
 
     /// Two-stage sarcasm for anyone trying to erase history (SPEC hard rule 3).

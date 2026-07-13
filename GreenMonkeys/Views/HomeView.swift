@@ -215,6 +215,11 @@ struct HomeView: View {
             if let plan = all.first(where: { $0.status() == .awaitingVerdict }) {
                 screenshotCover = .morning(plan)
             }
+        case "roast":
+            // A judged, crime-heavy debrief so the roast + closer render.
+            if let plan = all.first(where: { ($0.verdict?.crimes.count ?? 0) >= 2 }) {
+                screenshotCover = .morning(plan)
+            }
         case "pattern":
             screenshotCover = .pattern
         case "settings":

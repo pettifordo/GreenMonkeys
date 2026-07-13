@@ -61,6 +61,53 @@ struct CharacterVoiceTests {
         }
     }
 
+    @Test func roastReferencesScoreCrimesAndPromises() {
+        let roast = CharacterVoice.roast(
+            score: 4,
+            crimes: ["Threw up", "Drunk texting"],
+            brokenPromises: 2,
+            brutality: .savage,
+            word: "idiot"
+        )
+        #expect(roast.opener.contains("Four out of five"))
+        #expect(roast.charges.count == 2)
+        #expect(roast.charges[0].contains("stomach"))
+        #expect(roast.charges[1].contains("sent folder"))
+        #expect(roast.promisesLine?.contains("2") == true)
+        #expect(!roast.opener.contains("[WORD]"))
+    }
+
+    @Test func roastCustomCrimeGetsGenericCharge() {
+        let roast = CharacterVoice.roast(
+            score: 2, crimes: ["Sang Wonderwall twice"], brokenPromises: 0,
+            brutality: .standard, word: "idiot"
+        )
+        #expect(roast.charges.first?.contains("Sang Wonderwall twice") == true)
+        #expect(roast.promisesLine == nil)
+    }
+
+    @Test func roastCloserEscalatesToTheHonestQuestion() {
+        let mild = CharacterVoice.roast(score: 1, crimes: [], brokenPromises: 1, brutality: .standard, word: "idiot")
+        let severe = CharacterVoice.roast(score: 5, crimes: [], brokenPromises: 0, brutality: .standard, word: "idiot")
+        let manyCrimes = CharacterVoice.roast(score: 1, crimes: ["a", "b", "c"], brokenPromises: 0, brutality: .standard, word: "idiot")
+        #expect(!mild.closer.contains("more than it takes"))
+        #expect(mild.closer.contains("Could do better"))
+        #expect(severe.closer.contains("more than it takes"))
+        #expect(manyCrimes.closer.contains("more than it takes"))
+    }
+
+    @Test func cleanNightRoastPraisesInstead() {
+        let roast = CharacterVoice.roast(score: 0, crimes: [], brokenPromises: 0, brutality: .savage, word: "idiot")
+        #expect(roast.charges.isEmpty)
+        #expect(roast.closer.contains("bottle that"))
+        #expect(!roast.closer.contains("Could do better"))
+    }
+
+    @Test func gentleBrutalityUsesThePlainGradingOpener() {
+        let roast = CharacterVoice.roast(score: 3, crimes: [], brokenPromises: 0, brutality: .gentle, word: "idiot")
+        #expect(roast.opener.contains("3 out of 5"))
+    }
+
     @Test func articleHandlesVowelsAndConsonants() {
         #expect(CharacterVoice.article(for: "idiot") == "an")
         #expect(CharacterVoice.article(for: "embarrassment") == "an")
