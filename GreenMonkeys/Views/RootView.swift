@@ -20,12 +20,20 @@ struct RootView: View {
     @State private var debriefPlan: SessionPlan?
 
     var body: some View {
-        ZStack {
+        @Bindable var router = router
+        return ZStack {
             if unlocked {
                 HomeView()
             } else {
                 LockView(onUnlocked: { unlocked = true })
             }
+        }
+        .fullScreenCover(item: $router.verdictPlan) { plan in
+            NavigationStack { VerdictView(plan: plan) }
+        }
+        .onChange(of: router.goHomeSignal) { _, _ in
+            recordingPlan = nil
+            debriefPlan = nil
         }
         .onChange(of: router.pendingAction) { _, action in
             guard let action else { return }

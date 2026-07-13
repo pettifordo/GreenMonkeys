@@ -6,6 +6,7 @@ import WidgetKit
 enum ScreenshotCover: Identifiable {
     case session(SessionPlan)
     case morning(SessionPlan)
+    case verdict(SessionPlan)
     case pattern
     case settings
 
@@ -13,6 +14,7 @@ enum ScreenshotCover: Identifiable {
         switch self {
         case .session:  return "session"
         case .morning:  return "morning"
+        case .verdict:  return "verdict"
         case .pattern:  return "pattern"
         case .settings: return "settings"
         }
@@ -21,8 +23,10 @@ enum ScreenshotCover: Identifiable {
 
 struct HomeView: View {
     @Environment(\.modelContext) private var modelContext
+    @Environment(AppRouter.self) private var router
     @Query(sort: \SessionPlan.sessionStart) private var plans: [SessionPlan]
     @State private var showingEditor = false
+    @State private var path = NavigationPath()
     @State private var screenshotCover: ScreenshotCover?
 
     // @AppStorage so the home screen updates the moment Settings changes them.
@@ -56,7 +60,7 @@ struct HomeView: View {
     }
 
     var body: some View {
-        NavigationStack {
+        NavigationStack(path: $path) {
             List {
                 streakSection
 
@@ -144,11 +148,18 @@ struct HomeView: View {
                 pushWatchContext()
                 pushStreakSnapshot()
             }
+            .onChange(of: router.goHomeSignal) { _, _ in
+                // "Finish — go face the day": unwind everything back to Home.
+                path = NavigationPath()
+                showingEditor = false
+                screenshotCover = nil
+            }
             .fullScreenCover(item: $screenshotCover) { cover in
                 NavigationStack {
                     switch cover {
                     case .session(let plan): SessionLiveView(plan: plan)
                     case .morning(let plan): MorningAfterView(plan: plan)
+                    case .verdict(let plan): VerdictView(plan: plan)
                     case .pattern:           HistoryView()
                     case .settings:          SettingsView()
                     }
@@ -216,9 +227,9 @@ struct HomeView: View {
                 screenshotCover = .morning(plan)
             }
         case "roast":
-            // A judged, crime-heavy debrief so the roast + closer render.
+            // A judged, crime-heavy verdict so the roast + closer render.
             if let plan = all.first(where: { ($0.verdict?.crimes.count ?? 0) >= 2 }) {
-                screenshotCover = .morning(plan)
+                screenshotCover = .verdict(plan)
             }
         case "pattern":
             screenshotCover = .pattern

@@ -11,4 +11,15 @@ final class AppRouter {
     }
 
     var pendingAction: PendingAction?
+
+    /// When set, RootView presents the dedicated verdict screen over everything.
+    var verdictPlan: SessionPlan?
+
+    /// Bumped by "Finish — go face the day"; every presenting view unwinds to Home.
+    var goHomeSignal = 0
+
+    func finishToHome() {
+        verdictPlan = nil
+        goHomeSignal += 1
+    }
 }

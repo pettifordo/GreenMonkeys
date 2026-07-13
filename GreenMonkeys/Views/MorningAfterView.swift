@@ -7,7 +7,7 @@ import WidgetKit
 /// still ends pointing forward (SPEC hard rule 5).
 struct MorningAfterView: View {
     @Environment(\.modelContext) private var modelContext
-    @Environment(\.dismiss) private var dismiss
+    @Environment(AppRouter.self) private var router
     let plan: SessionPlan
 
     @AppStorage(SettingsKey.insultWord) private var insultWord = "idiot"
@@ -25,58 +25,35 @@ struct MorningAfterView: View {
 
     private var isJudged: Bool { plan.verdict != nil }
 
-    /// Built from the saved verdict, so it also shows when revisiting a judged session.
-    private var roast: CharacterVoice.Roast? {
-        guard let verdict = plan.verdict else { return nil }
-        return CharacterVoice.roast(
-            score: verdict.effectiveScore,
-            crimes: verdict.crimes,
-            brokenPromises: plan.commitments.filter { $0.wasBroken == true }.count,
-            brutality: AppSettings.brutality,
-            word: insultWord
-        )
-    }
-
     var body: some View {
         List {
-            // Once judged, the roast leads and everything else becomes the appendix.
-            if let roast {
-                Section {
-                    Text(roast.opener)
-                        .font(.headline)
-                    ForEach(roast.charges, id: \.self) { charge in
-                        HStack(alignment: .top, spacing: 8) {
-                            Text("🚨")
-                            Text(charge)
+            // The evidence leads: watch the tapes before you judge (owner request).
+            if plan.video(.drunk) != nil || plan.video(.plan) != nil {
+                Section("▶️ First, the evidence") {
+                    if let drunk = plan.video(.drunk) {
+                        Button {
+                            playingVideo = drunk
+                        } label: {
+                            Label("Watch drunk you", systemImage: "play.circle.fill")
                         }
-                        .font(.subheadline)
                     }
-                    if let promisesLine = roast.promisesLine {
-                        Text(promisesLine)
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
+                    if let planVideo = plan.video(.plan) {
+                        Button {
+                            playingVideo = planVideo
+                        } label: {
+                            Label("Rewatch sober you's plan", systemImage: "play.circle")
+                        }
                     }
-                } header: {
-                    Text("🐒 The roast")
                 }
+            }
 
-                Section {
-                    Text(roast.closer)
-                } header: {
-                    Text("And finally, monkey-free")
-                }
-
+            if isJudged {
                 Section {
                     Button {
-                        dismiss()
+                        router.verdictPlan = plan
                     } label: {
-                        Text("Finish — go face the day")
-                            .font(.headline)
-                            .frame(maxWidth: .infinity)
+                        Label("The verdict has been delivered — see the roast", systemImage: "hammer.fill")
                     }
-                    .buttonStyle(.borderedProminent)
-                    .listRowBackground(Color.clear)
-                    .listRowInsets(EdgeInsets())
                 }
             } else {
                 Section {
@@ -90,24 +67,10 @@ struct MorningAfterView: View {
                 } header: {
                     Text("🐒🫣 The morning committee")
                 }
-            }
-
-            Section("The evidence") {
-                if let drunk = plan.video(.drunk) {
-                    Button {
-                        playingVideo = drunk
-                    } label: {
-                        Label("Watch drunk you", systemImage: "play.circle.fill")
-                    }
-                } else {
-                    Text("No drunk video recorded. Suspiciously tidy, or too far gone to film?")
-                        .foregroundStyle(.secondary)
-                }
-                if let planVideo = plan.video(.plan) {
-                    Button {
-                        playingVideo = planVideo
-                    } label: {
-                        Label("Rewatch sober you's plan", systemImage: "play.circle")
+                if plan.video(.drunk) == nil {
+                    Section {
+                        Text("No drunk video recorded. Suspiciously tidy, or too far gone to film?")
+                            .foregroundStyle(.secondary)
                     }
                 }
             }
@@ -208,6 +171,7 @@ struct MorningAfterView: View {
                 Section {
                     Button {
                         saveVerdict()
+                        router.verdictPlan = plan
                     } label: {
                         Text("Deliver the verdict")
                             .font(.headline)
