@@ -12,6 +12,25 @@ final class WatchConnectivityReceiver: NSObject {
 
     override init() {
         super.init()
+        #if DEBUG
+        // Screenshot rig: canned context, no phone required. Debug builds only.
+        if ProcessInfo.processInfo.arguments.contains("-screenshotMode") {
+            let tonight = Calendar.current.date(bySettingHour: 19, minute: 0, second: 0, of: Date()) ?? Date()
+            context = WatchContext(
+                streakDays: 11,
+                insultWord: "idiot",
+                sessionOccasion: "Marco's birthday",
+                sessionStart: tonight,
+                commitments: [
+                    "No more than 4 drinks",
+                    "Water every other drink",
+                    "Leave by 23:00",
+                    "No driving — taxi or lift home",
+                ]
+            )
+            return
+        }
+        #endif
         sessionDelegate.onContext = { [weak self] context in
             Task { @MainActor in
                 self?.context = context

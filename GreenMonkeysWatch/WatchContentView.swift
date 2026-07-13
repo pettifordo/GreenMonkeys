@@ -7,7 +7,7 @@ struct WatchContentView: View {
         ScrollView {
             VStack(spacing: 10) {
                 if let context = receiver.context {
-                    Text("Days since you were a \(context.insultWord)")
+                    Text("Days since you were \(article(for: context.insultWord)) \(context.insultWord)")
                         .font(.caption2)
                         .foregroundStyle(.secondary)
                         .multilineTextAlignment(.center)
@@ -42,5 +42,9 @@ struct WatchContentView: View {
             .padding(.horizontal, 4)
         }
         .navigationTitle("Monkeys")
+    }
+
+    private func article(for word: String) -> String {
+        "aeiou".contains(word.lowercased().first ?? " ") ? "an" : "a"
     }
 }
