@@ -56,6 +56,18 @@ final class Commitment {
         CommitmentKind(rawValue: kindRaw) ?? .custom
     }
 
+    /// Stable identity for pattern tracking: built-ins group by kind, customs by their text.
+    var patternKey: String {
+        kind == .custom
+            ? detail.trimmingCharacters(in: .whitespaces).lowercased()
+            : kind.rawValue
+    }
+
+    /// Human name for pattern tracking.
+    var patternLabel: String {
+        kind == .custom ? detail : kind.label
+    }
+
     var displayText: String {
         switch kind {
         case .maxDrinks:    return "No more than \(detail) drinks"

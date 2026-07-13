@@ -5,6 +5,7 @@ import SwiftUI
 /// Kept as a single source of key names so views and services agree.
 enum SettingsKey {
     static let insultWord = "insultWord"
+    static let sessionNoun = "sessionNoun"
     static let brutality = "brutality"
     static let morningAfterHour = "morningAfterHour"
     static let appLockEnabled = "appLockEnabled"
@@ -17,6 +18,14 @@ enum AppSettings {
 
     static var insultWord: String {
         UserDefaults.standard.string(forKey: SettingsKey.insultWord) ?? "idiot"
+    }
+
+    static let sessionNounPresets = ["Session", "Night Out", "Drink", "Cheeky One"]
+
+    /// What the user calls a drinking occasion — drives the + button, empty
+    /// states, and titles ("Plan a Night Out", "No Cheeky One planned").
+    static var sessionNoun: String {
+        UserDefaults.standard.string(forKey: SettingsKey.sessionNoun) ?? "Session"
     }
 
     static var brutality: Brutality {

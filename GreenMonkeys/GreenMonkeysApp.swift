@@ -25,6 +25,9 @@ struct GreenMonkeysApp: App {
             RootView()
                 .environment(router)
                 .task {
+                    #if DEBUG
+                    if ScreenshotRig.isActive { return }
+                    #endif
                     _ = await NotificationService.shared.requestAuthorization()
                 }
                 .onAppear {

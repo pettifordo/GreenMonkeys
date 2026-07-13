@@ -133,21 +133,49 @@ enum CharacterVoice {
         return line(from: lines, brutality: brutality, variant: variant, word: "")
     }
 
+    // MARK: - Score gradings
+
+    /// "a" or "an" for the configured word.
+    static func article(for word: String) -> String {
+        "aeiou".contains(word.lowercased().first ?? " ") ? "an" : "a"
+    }
+
+    /// The 0–5 verdict scale, worded for maximum honesty (SPEC §2).
+    static func scoreGrading(_ score: Int, word: String) -> String {
+        let a = article(for: word)
+        switch score {
+        case 0:  return "Behaved like a normal person. Who even are you?"
+        case 1:  return "A bit of \(a) \(word). Recoverable."
+        case 2:  return "A proper \(word). People noticed."
+        case 3:  return "Weapons-grade \(word). Apologies are owed."
+        case 4:  return "\(a.capitalized) \(word) for the ages. The group chat has screenshots."
+        default: return "Can't show your face again. The Monkeys are impressed, frankly."
+        }
+    }
+
     // MARK: - Pattern callbacks
 
     /// Thrown at the user when they make a promise they've broken before (SPEC §1.4).
-    static func patternCallback(kind: CommitmentKind, timesPromised: Int, timesBroken: Int, brutality: Brutality, word: String) -> String? {
+    static func patternCallback(label: String, timesPromised: Int, timesBroken: Int, brutality: Brutality, word: String) -> String? {
         guard timesPromised > 0, timesBroken > 0 else { return nil }
         let kept = timesPromised - timesBroken
         switch brutality {
         case .gentle:
             return "Gentle note: you've made this promise \(timesPromised) time\(timesPromised == 1 ? "" : "s") and kept it \(kept)."
         case .standard:
-            return "You've promised \"\(kind.label)\" \(timesPromised) times now. Kept: \(kept). The Monkeys remember everything."
+            return "You've promised \"\(label)\" \(timesPromised) times now. Kept: \(kept). The Monkeys remember everything."
         case .savage:
-            return "\"\(kind.label)\" — promised \(timesPromised) times, broken \(timesBroken). Saying it louder this time, you [WORD]?".replacing("[WORD]", with: word)
+            return "\"\(label)\" — promised \(timesPromised) times, broken \(timesBroken). Saying it louder this time, you [WORD]?".replacing("[WORD]", with: word)
         }
     }
+
+    // MARK: - Deletion friction
+
+    /// Two-stage sarcasm for anyone trying to erase history (SPEC hard rule 3).
+    static let deleteWarnings = (
+        first: "Deleting this won't delete the memory of it. Everyone who was there still knows.",
+        second: "Last chance. The videos, the verdict, the evidence — gone. The Monkeys will still remember. They always remember."
+    )
 
     // MARK: - Private
 

@@ -33,7 +33,9 @@ struct PlanEditorView: View {
             .filter { $0.verdict != nil }
             .flatMap(\.commitments)
             .compactMap { commitment in
-                commitment.wasBroken.map { CommitmentRecord(kind: commitment.kind, wasBroken: $0) }
+                commitment.wasBroken.map {
+                    CommitmentRecord(key: commitment.patternKey, label: commitment.patternLabel, wasBroken: $0)
+                }
             }
     }
 
@@ -54,6 +56,19 @@ struct PlanEditorView: View {
                 Menu {
                     ForEach(availableKinds, id: \.self) { kind in
                         Button("\(kind.symbol) \(kind.label)") { add(kind) }
+                    }
+                    let savedCustoms = availableSavedCustoms
+                    if !savedCustoms.isEmpty {
+                        Divider()
+                        ForEach(savedCustoms, id: \.self) { text in
+                            Button("🤙 \(text)") {
+                                drafts.append(DraftCommitment(kind: .custom, detail: text))
+                            }
+                        }
+                    }
+                    Divider()
+                    Button("✍️ New promise…") {
+                        drafts.append(DraftCommitment(kind: .custom, detail: ""))
                     }
                 } label: {
                     Label("Add a promise", systemImage: "plus")
@@ -102,7 +117,7 @@ struct PlanEditorView: View {
                 Text("30 seconds of sober you saying exactly what the plan is. Tomorrow-you will thank you. Or wince.")
             }
         }
-        .navigationTitle("New plan")
+        .navigationTitle("New \(AppSettings.sessionNoun)")
         .toolbar {
             ToolbarItem(placement: .cancellationAction) {
                 Button("Cancel") {
@@ -131,15 +146,26 @@ struct PlanEditorView: View {
 
     private var availableKinds: [CommitmentKind] {
         CommitmentKind.allCases.filter { kind in
-            kind == .custom || !drafts.contains { $0.kind == kind }
+            kind != .custom && !drafts.contains { $0.kind == kind }
+        }
+    }
+
+    /// Previously used custom promises (the user's own list), minus ones already drafted.
+    private var availableSavedCustoms: [String] {
+        CatalogService.customPromises.filter { text in
+            !drafts.contains { $0.kind == .custom && $0.detail.caseInsensitiveCompare(text) == .orderedSame }
         }
     }
 
     private var patternCallbacks: [String] {
         drafts.compactMap { draft in
-            let history = PatternService.history(for: draft.kind, in: judgedRecords)
+            let key = draft.kind == .custom
+                ? draft.detail.trimmingCharacters(in: .whitespaces).lowercased()
+                : draft.kind.rawValue
+            guard !key.isEmpty else { return nil }
+            let history = PatternService.history(forKey: key, in: judgedRecords)
             return CharacterVoice.patternCallback(
-                kind: draft.kind,
+                label: draft.kind == .custom ? draft.detail : draft.kind.label,
                 timesPromised: history.timesPromised,
                 timesBroken: history.timesBroken,
                 brutality: AppSettings.brutality,
@@ -177,6 +203,10 @@ struct PlanEditorView: View {
             let commitment = Commitment(kind: draft.kind, detail: draft.detail)
             commitment.plan = plan
             plan.commitments.append(commitment)
+            // Custom promises join the catalog for future plans.
+            if draft.kind == .custom {
+                CatalogService.rememberPromise(draft.detail)
+            }
         }
 
         if let fileName = planVideoFileName {

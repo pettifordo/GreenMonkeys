@@ -42,6 +42,14 @@ GreenMonkeysWatch/       # watchOS app (slim: streak + tonight's plan)
 GreenMonkeysTests/       # Swift Testing (@Test / #expect)
 ```
 
+## App Store screenshots
+
+Debug builds include a launch-argument rig (`ScreenshotRig.swift`): launch with
+`-screenshotMode -demoData -screen <home|editor|session|morning|pattern|settings>`
+on an iPhone 17 Pro Max sim (1320×2868 = 6.9" ASC size), then
+`simctl io ... screenshot`. Output lives in `AppStore/`. The rig seeds demo
+data, skips the lock and the notification prompt; it is compiled out of Release.
+
 ## Conventions
 
 Same as Doseify: 4-space indent, one primary type per file, Views/*View,

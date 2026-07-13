@@ -10,7 +10,12 @@ struct RootView: View {
     @Environment(\.scenePhase) private var scenePhase
     @Query private var plans: [SessionPlan]
 
-    @State private var unlocked = !AppSettings.appLockEnabled
+    @State private var unlocked: Bool = {
+        #if DEBUG
+        if ScreenshotRig.isActive { return true }
+        #endif
+        return !AppSettings.appLockEnabled
+    }()
     @State private var recordingPlan: SessionPlan?
     @State private var debriefPlan: SessionPlan?
 

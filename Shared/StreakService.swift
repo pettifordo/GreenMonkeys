@@ -3,16 +3,24 @@ import Foundation
 /// Pure streak arithmetic: days since the last self-confessed idiot night.
 enum StreakService {
 
-    /// Whole calendar days between the reference date and now.
+    /// Whole clean calendar days earned since the last incident.
+    ///
+    /// Convention (owner-confirmed): the hangover morning counts as day ZERO —
+    /// you haven't earned a day yet just by waking up ashamed. The first full
+    /// day after the incident night is day 1.
     /// - Parameters:
-    ///   - lastIdiotDate: `sessionStart` of the most recent plan whose verdict was "yes, I was one".
-    ///   - firstUseDate: fallback anchor when no idiot verdict exists yet.
+    ///   - lastIdiotDate: `sessionStart` of the most recent plan whose verdict scored ≥ 1.
+    ///   - firstUseDate: fallback anchor when no idiot verdict exists yet (counts
+    ///     plainly — no hangover-day shift, nothing happened).
     static func daysSince(lastIdiotDate: Date?, firstUseDate: Date, now: Date = Date(), calendar: Calendar = .current) -> Int {
-        let anchor = lastIdiotDate ?? firstUseDate
-        let start = calendar.startOfDay(for: anchor)
         let end = calendar.startOfDay(for: now)
-        let days = calendar.dateComponents([.day], from: start, to: end).day ?? 0
-        return max(0, days)
+        if let lastIdiotDate {
+            let incidentDay = calendar.startOfDay(for: lastIdiotDate)
+            let days = (calendar.dateComponents([.day], from: incidentDay, to: end).day ?? 0) - 1
+            return max(0, days)
+        }
+        let start = calendar.startOfDay(for: firstUseDate)
+        return max(0, calendar.dateComponents([.day], from: start, to: end).day ?? 0)
     }
 
     /// The anchor date for the streak given all completed plans.

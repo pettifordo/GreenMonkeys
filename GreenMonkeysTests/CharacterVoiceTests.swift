@@ -39,12 +39,33 @@ struct CharacterVoiceTests {
     }
 
     @Test func patternCallbackOnlyFiresWithBrokenHistory() {
-        #expect(CharacterVoice.patternCallback(kind: .leaveBy, timesPromised: 0, timesBroken: 0, brutality: .standard, word: "idiot") == nil)
-        #expect(CharacterVoice.patternCallback(kind: .leaveBy, timesPromised: 3, timesBroken: 0, brutality: .standard, word: "idiot") == nil)
+        #expect(CharacterVoice.patternCallback(label: "Leave by", timesPromised: 0, timesBroken: 0, brutality: .standard, word: "idiot") == nil)
+        #expect(CharacterVoice.patternCallback(label: "Leave by", timesPromised: 3, timesBroken: 0, brutality: .standard, word: "idiot") == nil)
 
-        let callback = CharacterVoice.patternCallback(kind: .leaveBy, timesPromised: 4, timesBroken: 3, brutality: .standard, word: "idiot")
+        let callback = CharacterVoice.patternCallback(label: "Leave by", timesPromised: 4, timesBroken: 3, brutality: .standard, word: "idiot")
+        #expect(callback?.contains("Leave by") == true)
         #expect(callback?.contains("4") == true)
         #expect(callback?.contains("1") == true) // kept once
+    }
+
+    @Test func scoreGradingsCoverTheFullScaleAndInjectTheWord() {
+        for score in 0...5 {
+            let grading = CharacterVoice.scoreGrading(score, word: "liability")
+            #expect(!grading.isEmpty)
+            #expect(!grading.contains("[WORD]"))
+        }
+        // 0 is the only score that doesn't name-call.
+        #expect(!CharacterVoice.scoreGrading(0, word: "liability").contains("liability"))
+        for score in 1...4 {
+            #expect(CharacterVoice.scoreGrading(score, word: "liability").contains("liability"))
+        }
+    }
+
+    @Test func articleHandlesVowelsAndConsonants() {
+        #expect(CharacterVoice.article(for: "idiot") == "an")
+        #expect(CharacterVoice.article(for: "embarrassment") == "an")
+        #expect(CharacterVoice.article(for: "drunk") == "a")
+        #expect(CharacterVoice.article(for: "liability") == "a")
     }
 
     @Test func variantIndexNeverCrashesOutOfRange() {

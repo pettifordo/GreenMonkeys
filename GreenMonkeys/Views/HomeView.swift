@@ -2,17 +2,40 @@ import SwiftUI
 import SwiftData
 import WidgetKit
 
+/// Full-screen destinations the screenshot rig can open directly (debug builds).
+enum ScreenshotCover: Identifiable {
+    case session(SessionPlan)
+    case morning(SessionPlan)
+    case pattern
+    case settings
+
+    var id: String {
+        switch self {
+        case .session:  return "session"
+        case .morning:  return "morning"
+        case .pattern:  return "pattern"
+        case .settings: return "settings"
+        }
+    }
+}
+
 struct HomeView: View {
+    @Environment(\.modelContext) private var modelContext
     @Query(sort: \SessionPlan.sessionStart) private var plans: [SessionPlan]
     @State private var showingEditor = false
+    @State private var screenshotCover: ScreenshotCover?
+
+    // @AppStorage so the home screen updates the moment Settings changes them.
+    @AppStorage(SettingsKey.insultWord) private var insultWord = "idiot"
+    @AppStorage(SettingsKey.sessionNoun) private var sessionNoun = "Session"
 
     private var hasIdiotHistory: Bool {
-        plans.contains { $0.verdict?.wasIdiot == true }
+        plans.contains { ($0.verdict?.effectiveScore ?? 0) > 0 }
     }
 
     private var streakDays: Int {
         let idiotDates = plans
-            .filter { $0.verdict?.wasIdiot == true }
+            .filter { ($0.verdict?.effectiveScore ?? 0) > 0 }
             .map(\.sessionStart)
         return StreakService.daysSince(
             lastIdiotDate: StreakService.lastIdiotDate(idiotVerdictSessionStarts: idiotDates),
@@ -55,10 +78,14 @@ struct HomeView: View {
                     }
                 }
 
-                Section("Upcoming sessions") {
+                Section("Coming up") {
                     if upcoming.isEmpty {
-                        Text("Nothing planned. The Monkeys rest… for now.")
-                            .foregroundStyle(.secondary)
+                        Button {
+                            showingEditor = true
+                        } label: {
+                            Text("No \(sessionNoun) planned. The Monkeys rest… for now. Tap to fix that.")
+                                .foregroundStyle(.secondary)
+                        }
                     }
                     ForEach(upcoming) { plan in
                         NavigationLink(value: plan) {
@@ -101,8 +128,12 @@ struct HomeView: View {
                     Button {
                         showingEditor = true
                     } label: {
-                        Label("Plan a session", systemImage: "plus.circle.fill")
-                            .font(.headline)
+                        // Explicit HStack: bottom-bar Labels collapse to icon-only.
+                        HStack {
+                            Image(systemName: "plus.circle.fill")
+                            Text("Plan a \(sessionNoun)")
+                        }
+                        .font(.headline)
                     }
                 }
             }
@@ -113,24 +144,48 @@ struct HomeView: View {
                 pushWatchContext()
                 pushStreakSnapshot()
             }
+            .fullScreenCover(item: $screenshotCover) { cover in
+                NavigationStack {
+                    switch cover {
+                    case .session(let plan): SessionLiveView(plan: plan)
+                    case .morning(let plan): MorningAfterView(plan: plan)
+                    case .pattern:           HistoryView()
+                    case .settings:          SettingsView()
+                    }
+                }
+            }
+            .task {
+                #if DEBUG
+                guard ScreenshotRig.isActive else { return }
+                try? await Task.sleep(nanoseconds: 400_000_000)
+                ScreenshotRig.seedDemoDataIfNeeded(context: modelContext)
+                try? await Task.sleep(nanoseconds: 300_000_000)
+                routeForScreenshot()
+                #endif
+            }
         }
     }
 
     private var streakSection: some View {
         Section {
-            VStack(spacing: 6) {
-                Text("Days since you were a\(anArticleSuffix) \(AppSettings.insultWord)")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-                Text("\(streakDays)")
-                    .font(.system(size: 72, weight: .black, design: .rounded))
-                    .foregroundStyle(streakDays == 0 && hasIdiotHistory ? .red : .green)
-                Text(streakTagline)
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
+            // The whole score is a tap target into the patterns screen.
+            NavigationLink {
+                HistoryView()
+            } label: {
+                VStack(spacing: 6) {
+                    Text("Days since you were \(CharacterVoice.article(for: insultWord)) \(insultWord)")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                    Text("\(streakDays)")
+                        .font(.system(size: 72, weight: .black, design: .rounded))
+                        .foregroundStyle(streakDays == 0 && hasIdiotHistory ? .red : .green)
+                    Text(streakTagline)
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 12)
             }
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, 12)
         }
     }
 
@@ -144,16 +199,37 @@ struct HomeView: View {
         return "Keep it going. 🐒"
     }
 
-    private var anArticleSuffix: String {
-        let first = AppSettings.insultWord.lowercased().first
-        return "aeiou".contains(first ?? " ") ? "n" : ""
+    #if DEBUG
+    private func routeForScreenshot() {
+        guard let screen = ScreenshotRig.screen else { return }
+        let descriptor = FetchDescriptor<SessionPlan>(sortBy: [SortDescriptor(\SessionPlan.sessionStart)])
+        let all = (try? modelContext.fetch(descriptor)) ?? []
+        switch screen {
+        case "editor":
+            showingEditor = true
+        case "session":
+            if let plan = all.last(where: { $0.verdict == nil && !$0.commitments.isEmpty }) {
+                screenshotCover = .session(plan)
+            }
+        case "morning":
+            if let plan = all.first(where: { $0.status() == .awaitingVerdict }) {
+                screenshotCover = .morning(plan)
+            }
+        case "pattern":
+            screenshotCover = .pattern
+        case "settings":
+            screenshotCover = .settings
+        default:
+            break
+        }
     }
+    #endif
 
     private func pushWatchContext() {
         let tonight = activePlan ?? upcoming.first
         let context = WatchContext(
             streakDays: streakDays,
-            insultWord: AppSettings.insultWord,
+            insultWord: insultWord,
             sessionOccasion: tonight?.occasion,
             sessionStart: tonight?.sessionStart,
             commitments: tonight?.commitments.map(\.displayText) ?? []
@@ -163,13 +239,13 @@ struct HomeView: View {
 
     private func pushStreakSnapshot() {
         let idiotDates = plans
-            .filter { $0.verdict?.wasIdiot == true }
+            .filter { ($0.verdict?.effectiveScore ?? 0) > 0 }
             .map(\.sessionStart)
         StreakSnapshot(
             anchorDate: StreakService.lastIdiotDate(idiotVerdictSessionStarts: idiotDates),
             hasIdiotHistory: !idiotDates.isEmpty,
             firstUseDate: AppSettings.firstUseDate,
-            insultWord: AppSettings.insultWord
+            insultWord: insultWord
         ).save()
         WidgetCenter.shared.reloadAllTimelines()
     }

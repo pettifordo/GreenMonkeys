@@ -30,6 +30,8 @@ targets:
       path: GreenMonkeys/Info.plist
       properties:
         CFBundleDisplayName: Green Monkeys
+        CFBundleShortVersionString: "1.0.0"
+        CFBundleVersion: "1"
         NSCameraUsageDescription: "Green Monkeys uses the camera so you can record your plan, session, and morning-after videos. Videos never leave your phone."
         NSMicrophoneUsageDescription: "The microphone records sound with your videos. Recordings never leave your phone."
         NSFaceIDUsageDescription: "Face ID keeps your videos private by locking the app."
@@ -73,6 +75,8 @@ targets:
       path: GreenMonkeysWatch/Info.plist
       properties:
         CFBundleDisplayName: Green Monkeys
+        CFBundleShortVersionString: "1.0.0"
+        CFBundleVersion: "1"
         WKCompanionAppBundleIdentifier: com.strive4it.greenmonkeys
         WKApplication: true
         ITSAppUsesNonExemptEncryption: false
@@ -101,6 +105,8 @@ targets:
       path: GreenMonkeysWidgets/Info.plist
       properties:
         CFBundleDisplayName: Green Monkeys
+        CFBundleShortVersionString: "1.0.0"
+        CFBundleVersion: "1"
         NSExtension:
           NSExtensionPointIdentifier: com.apple.widgetkit-extension
 

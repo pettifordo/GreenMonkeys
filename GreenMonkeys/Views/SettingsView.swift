@@ -1,12 +1,17 @@
 import SwiftUI
+import WidgetKit
 
 struct SettingsView: View {
     @AppStorage(SettingsKey.insultWord) private var insultWord = "idiot"
+    @AppStorage(SettingsKey.sessionNoun) private var sessionNoun = "Session"
     @AppStorage(SettingsKey.brutality) private var brutality = Brutality.standard.rawValue
     @AppStorage(SettingsKey.morningAfterHour) private var morningAfterHour = 9
     @AppStorage(SettingsKey.appLockEnabled) private var appLockEnabled = true
 
     @State private var customWord = ""
+    @State private var customNoun = ""
+    @State private var customPromises: [String] = CatalogService.customPromises
+    @State private var customCrimes: [String] = CatalogService.customCrimes
 
     var body: some View {
         Form {
@@ -32,6 +37,31 @@ struct SettingsView: View {
             }
 
             Section {
+                Picker("Plan a…", selection: $sessionNoun) {
+                    ForEach(AppSettings.sessionNounPresets, id: \.self) { noun in
+                        Text(noun).tag(noun)
+                    }
+                    if !AppSettings.sessionNounPresets.contains(sessionNoun) {
+                        Text(sessionNoun).tag(sessionNoun)
+                    }
+                }
+                HStack {
+                    TextField("Or your own name for it…", text: $customNoun)
+                    Button("Use") {
+                        let trimmed = customNoun.trimmingCharacters(in: .whitespaces)
+                        guard !trimmed.isEmpty else { return }
+                        sessionNoun = trimmed
+                        customNoun = ""
+                    }
+                    .disabled(customNoun.trimmingCharacters(in: .whitespaces).isEmpty)
+                }
+            } header: {
+                Text("What do you call one?")
+            } footer: {
+                Text("Drives the plan button and empty states — \"Plan a \(sessionNoun)\", \"No \(sessionNoun) planned\".")
+            }
+
+            Section {
                 Picker("Brutality", selection: $brutality) {
                     ForEach(Brutality.allCases, id: \.rawValue) { level in
                         Text(level.label).tag(level.rawValue)
@@ -41,7 +71,47 @@ struct SettingsView: View {
             } header: {
                 Text("How hard should the Monkeys go?")
             } footer: {
-                Text("Scales the jokes, not the debrief — every morning still ends with your one change.")
+                Text("Scales the jokes, not the debrief.")
+            }
+
+            Section {
+                if customPromises.isEmpty {
+                    Text("Custom promises you add while planning appear here.")
+                        .foregroundStyle(.secondary)
+                }
+                ForEach(customPromises, id: \.self) { promise in
+                    Text("🤙 \(promise)")
+                }
+                .onDelete { offsets in
+                    for index in offsets {
+                        CatalogService.removeCustomPromise(customPromises[index])
+                    }
+                    customPromises = CatalogService.customPromises
+                }
+            } header: {
+                Text("Your promise list")
+            } footer: {
+                Text("Swipe to remove. Past sessions keep their record either way.")
+            }
+
+            Section {
+                if customCrimes.isEmpty {
+                    Text("Crimes you confess to that aren't on the standard charge sheet appear here.")
+                        .foregroundStyle(.secondary)
+                }
+                ForEach(customCrimes, id: \.self) { crime in
+                    Text("🚨 \(crime)")
+                }
+                .onDelete { offsets in
+                    for index in offsets {
+                        CatalogService.removeCustomCrime(customCrimes[index])
+                    }
+                    customCrimes = CatalogService.customCrimes
+                }
+            } header: {
+                Text("Your booze-crime list")
+            } footer: {
+                Text("The built-in charges can't be removed. The law is the law.")
             }
 
             Section("The morning after") {
@@ -54,6 +124,15 @@ struct SettingsView: View {
                 Text("Your videos never leave this phone: not iCloud, not backups, not anywhere. The lock keeps over-the-shoulder eyes out too.")
             }
 
+            Section("Help") {
+                Link(destination: URL(string: "https://pettifordo.github.io/GreenMonkeys/support.html") ?? URL(fileURLWithPath: "/")) {
+                    Label("Help & support", systemImage: "questionmark.circle")
+                }
+                Link(destination: URL(string: "https://pettifordo.github.io/GreenMonkeys/privacy.html") ?? URL(fileURLWithPath: "/")) {
+                    Label("Privacy policy", systemImage: "hand.raised")
+                }
+            }
+
             Section {
                 Link("If this feels bigger than morning-after regret…",
                      destination: URL(string: "https://www.nhs.uk/live-well/alcohol-advice/") ?? URL(fileURLWithPath: "/"))
@@ -62,5 +141,12 @@ struct SettingsView: View {
             }
         }
         .navigationTitle("Settings")
+        .onChange(of: insultWord) { _, newWord in
+            // Keep the widget's wording in step without waiting for a Home visit.
+            var snapshot = StreakSnapshot.load()
+            snapshot.insultWord = newWord
+            snapshot.save()
+            WidgetCenter.shared.reloadAllTimelines()
+        }
     }
 }

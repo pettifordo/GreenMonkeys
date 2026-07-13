@@ -59,6 +59,16 @@ struct SessionLiveView: View {
                     }
                 }
             }
+
+            Section {
+                NavigationLink {
+                    MorningAfterView(plan: plan)
+                } label: {
+                    Label("Record the outcome", systemImage: "sunrise.fill")
+                }
+            } footer: {
+                Text("Home early, or the morning's already here? Skip straight to the debrief.")
+            }
         }
         .navigationTitle(plan.occasion.isEmpty ? "Session" : plan.occasion)
         .fullScreenCover(isPresented: $showingCamera) {

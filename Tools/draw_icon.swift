@@ -1,27 +1,32 @@
 // Green Monkeys app icon generator — a guilty-looking green monkey with a
-// slipping halo on a night-out purple gradient. Run: swift draw_icon.swift out.png
-import AppKit
+// slipping halo on a night-out purple gradient.
+// Pure CoreGraphics, and deliberately WITHOUT an alpha channel: App Store
+// Connect rejects 1024px marketing icons that contain alpha (ITMS-90717).
+// Run: swift Tools/draw_icon.swift out.png
+import CoreGraphics
+import Foundation
+import ImageIO
+import UniformTypeIdentifiers
 
 let out = CommandLine.arguments.count > 1 ? CommandLine.arguments[1] : "icon.png"
 let px = 1024
 
-let rep = NSBitmapImageRep(
-    bitmapDataPlanes: nil, pixelsWide: px, pixelsHigh: px,
-    bitsPerSample: 8, samplesPerPixel: 4, hasAlpha: true, isPlanar: false,
-    colorSpaceName: .deviceRGB, bytesPerRow: 0, bitsPerPixel: 0
-)!
-let gctx = NSGraphicsContext(bitmapImageRep: rep)!
-NSGraphicsContext.current = gctx
-let ctx = gctx.cgContext
+guard let ctx = CGContext(
+    data: nil, width: px, height: px, bitsPerComponent: 8, bytesPerRow: 0,
+    space: CGColorSpaceCreateDeviceRGB(),
+    bitmapInfo: CGImageAlphaInfo.noneSkipLast.rawValue
+) else {
+    fatalError("could not create context")
+}
 
 // Flip to top-left origin so the design coordinates read naturally.
 ctx.translateBy(x: 0, y: CGFloat(px))
 ctx.scaleBy(x: 1, y: -1)
 
-func rgb(_ hex: UInt32) -> CGColor {
+func rgb(_ hex: UInt32, _ alpha: CGFloat = 1) -> CGColor {
     CGColor(red: CGFloat((hex >> 16) & 0xFF) / 255,
             green: CGFloat((hex >> 8) & 0xFF) / 255,
-            blue: CGFloat(hex & 0xFF) / 255, alpha: 1)
+            blue: CGFloat(hex & 0xFF) / 255, alpha: alpha)
 }
 
 // MARK: Background — deep night-out purple gradient
@@ -30,7 +35,7 @@ let gradient = CGGradient(colorsSpace: CGColorSpaceCreateDeviceRGB(), colors: co
 ctx.drawLinearGradient(gradient, start: CGPoint(x: 512, y: 0), end: CGPoint(x: 512, y: 1024), options: [])
 
 // Soft spotlight glow behind the monkey
-ctx.setFillColor(CGColor(red: 1, green: 1, blue: 1, alpha: 0.07))
+ctx.setFillColor(rgb(0xFFFFFF, 0.07))
 ctx.fillEllipse(in: CGRect(x: 512 - 400, y: 460 - 400, width: 800, height: 800))
 
 let green = rgb(0x3E9B4F)
@@ -56,11 +61,11 @@ ctx.fillEllipse(in: CGRect(x: 609 - 108, y: 470 - 108, width: 216, height: 216))
 ctx.fillEllipse(in: CGRect(x: 512 - 215, y: 615 - 165, width: 430, height: 330))
 
 // MARK: Left eye — open, guilty sideways glance
-ctx.setFillColor(.white)
+ctx.setFillColor(rgb(0xFFFFFF))
 ctx.fillEllipse(in: CGRect(x: 415 - 62, y: 478 - 68, width: 124, height: 136))
 ctx.setFillColor(rgb(0x14100C))
 ctx.fillEllipse(in: CGRect(x: 434 - 29, y: 497 - 29, width: 58, height: 58))
-ctx.setFillColor(.white)
+ctx.setFillColor(rgb(0xFFFFFF))
 ctx.fillEllipse(in: CGRect(x: 423 - 10, y: 484 - 10, width: 20, height: 20))
 
 // MARK: Right eye — cheeky wink
@@ -99,7 +104,12 @@ ctx.setLineWidth(26)
 ctx.strokeEllipse(in: CGRect(x: -140, y: -42, width: 280, height: 84))
 ctx.restoreGState()
 
-NSGraphicsContext.current = nil
-let png = rep.representation(using: .png, properties: [:])!
-try! png.write(to: URL(fileURLWithPath: out))
+guard let image = ctx.makeImage(),
+      let destination = CGImageDestinationCreateWithURL(
+          URL(fileURLWithPath: out) as CFURL, UTType.png.identifier as CFString, 1, nil
+      ) else {
+    fatalError("could not encode image")
+}
+CGImageDestinationAddImage(destination, image, nil)
+CGImageDestinationFinalize(destination)
 print("wrote \(out)")

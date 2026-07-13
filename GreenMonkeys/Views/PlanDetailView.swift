@@ -1,14 +1,18 @@
 import SwiftUI
 import SwiftData
 
-/// Read-only detail for planned and completed sessions, with delete.
+/// Detail for planned and completed sessions: the promises, the verdict, the
+/// charge sheet, the videos — and a deliberately obstructive delete.
 struct PlanDetailView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
     let plan: SessionPlan
 
+    @AppStorage(SettingsKey.insultWord) private var insultWord = "idiot"
+
     @State private var playingVideo: SessionVideo?
     @State private var confirmingDelete = false
+    @State private var confirmingDeleteFinal = false
 
     var body: some View {
         List {
@@ -17,15 +21,17 @@ struct PlanDetailView: View {
                 LabeledContent("Leaving at", value: plan.plannedEnd.formatted(date: .omitted, time: .shortened))
             }
 
-            Section("The promises") {
-                ForEach(plan.commitments) { commitment in
-                    HStack {
-                        Text(commitment.displayText)
-                        Spacer()
-                        if let broken = commitment.wasBroken {
-                            Text(broken ? "Broken ✗" : "Kept ✓")
-                                .font(.caption.bold())
-                                .foregroundStyle(broken ? .red : .green)
+            if !plan.commitments.isEmpty {
+                Section("The promises") {
+                    ForEach(plan.commitments) { commitment in
+                        HStack {
+                            Text(commitment.displayText)
+                            Spacer()
+                            if let broken = commitment.wasBroken, plan.verdict != nil {
+                                Text(broken ? "Broken ✗" : "Kept ✓")
+                                    .font(.caption.bold())
+                                    .foregroundStyle(broken ? .red : .green)
+                            }
                         }
                     }
                 }
@@ -33,12 +39,34 @@ struct PlanDetailView: View {
 
             if let verdict = plan.verdict {
                 Section("The verdict") {
-                    LabeledContent("Were you one?", value: verdict.wasIdiot ? "Yes 🙈" : "No 🎉")
+                    LabeledContent("Score", value: "\(verdict.effectiveScore) / 5")
+                    Text(CharacterVoice.scoreGrading(verdict.effectiveScore, word: insultWord))
+                        .font(.subheadline)
+                        .foregroundStyle(verdict.effectiveScore == 0 ? .green : .red)
+                    if !verdict.crimes.isEmpty {
+                        LabeledContent("Charge sheet") {
+                            Text(verdict.crimes.joined(separator: ", "))
+                                .multilineTextAlignment(.trailing)
+                        }
+                    }
                     if !verdict.oneChange.isEmpty {
                         LabeledContent("One change") { Text(verdict.oneChange) }
                     }
                     if !verdict.note.isEmpty {
                         LabeledContent("Note") { Text(verdict.note) }
+                    }
+                }
+            } else {
+                Section("Get on with it") {
+                    NavigationLink {
+                        SessionLiveView(plan: plan)
+                    } label: {
+                        Label("Open the session screen", systemImage: "party.popper")
+                    }
+                    NavigationLink {
+                        MorningAfterView(plan: plan)
+                    } label: {
+                        Label("Record the outcome", systemImage: "sunrise")
                     }
                 }
             }
@@ -62,6 +90,8 @@ struct PlanDetailView: View {
                 Button("Delete this session", role: .destructive) {
                     confirmingDelete = true
                 }
+            } footer: {
+                Text("Deleting is allowed. Forgetting is not guaranteed.")
             }
         }
         .navigationTitle(plan.occasion.isEmpty ? "Session" : plan.occasion)
@@ -69,11 +99,20 @@ struct PlanDetailView: View {
             VideoPlayerSheet(fileName: video.fileName)
         }
         .confirmationDialog(
-            "Delete this session and all its videos? This cannot be undone.",
+            CharacterVoice.deleteWarnings.first,
             isPresented: $confirmingDelete,
             titleVisibility: .visible
         ) {
-            Button("Delete everything", role: .destructive) { deletePlan() }
+            Button("I accept the shame is permanent", role: .destructive) {
+                confirmingDeleteFinal = true
+            }
+            Button("Fine, keep it", role: .cancel) {}
+        }
+        .alert("Absolutely sure?", isPresented: $confirmingDeleteFinal) {
+            Button("Delete it all", role: .destructive) { deletePlan() }
+            Button("No, I'll own it", role: .cancel) {}
+        } message: {
+            Text(CharacterVoice.deleteWarnings.second)
         }
     }
 

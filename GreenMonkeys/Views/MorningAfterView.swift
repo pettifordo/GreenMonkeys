@@ -2,21 +2,26 @@ import SwiftUI
 import SwiftData
 import WidgetKit
 
-/// The debrief: watch the evidence, judge each promise, deliver the verdict,
-/// and — always — end forward-looking (hard rule 5).
+/// The debrief: watch the evidence, judge each promise, confess the booze
+/// crimes, and score yourself 0–5. Only the score is mandatory — but the flow
+/// still ends pointing forward (SPEC hard rule 5).
 struct MorningAfterView: View {
     @Environment(\.modelContext) private var modelContext
-    @Environment(\.dismiss) private var dismiss
     let plan: SessionPlan
 
+    @AppStorage(SettingsKey.insultWord) private var insultWord = "idiot"
+
     @State private var brokenFlags: [UUID: Bool] = [:]
-    @State private var wasIdiot = false
+    @State private var score: Int?
+    @State private var selectedCrimes: Set<String> = []
+    @State private var newCrime = ""
     @State private var oneChange = ""
     @State private var note = ""
     @State private var morningVideoFileName: String?
     @State private var showingCamera = false
     @State private var playingVideo: SessionVideo?
     @State private var savedLine: String?
+    @State private var crimeOptions: [String] = CatalogService.allCrimes
 
     private var isJudged: Bool { plan.verdict != nil }
 
@@ -25,7 +30,7 @@ struct MorningAfterView: View {
             Section {
                 Text(CharacterVoice.monkeyMorningGreeting(
                     brutality: AppSettings.brutality,
-                    word: AppSettings.insultWord
+                    word: insultWord
                 ))
                 .font(.headline)
                 Text(CharacterVoice.paranoiaMorningLine(brutality: AppSettings.brutality))
@@ -71,14 +76,56 @@ struct MorningAfterView: View {
             }
 
             Section {
-                Toggle("Were you a\(anSuffix) \(AppSettings.insultWord) last night?", isOn: $wasIdiot)
+                ForEach(crimeOptions, id: \.self) { crime in
+                    Toggle(isOn: bindingForCrime(crime)) {
+                        Text(crime)
+                    }
                     .disabled(isJudged)
+                }
+                if !isJudged {
+                    HStack {
+                        TextField("Add your own crime…", text: $newCrime)
+                        Button("Confess") { addCustomCrime() }
+                            .disabled(newCrime.trimmingCharacters(in: .whitespaces).isEmpty)
+                    }
+                }
+            } header: {
+                Text("The charge sheet")
+            } footer: {
+                Text("Anything you add is remembered for future mornings. The Monkeys keep excellent records.")
+            }
+
+            Section {
+                HStack(spacing: 8) {
+                    ForEach(0...5, id: \.self) { value in
+                        Button {
+                            score = value
+                        } label: {
+                            Text("\(value)")
+                                .font(.headline)
+                                .frame(maxWidth: .infinity, minHeight: 42)
+                                .background(
+                                    score == value
+                                        ? (value == 0 ? Color.green : Color.red.opacity(0.35 + Double(value) * 0.13))
+                                        : Color(.tertiarySystemFill),
+                                    in: RoundedRectangle(cornerRadius: 8)
+                                )
+                                .foregroundStyle(score == value ? Color.white : Color.primary)
+                        }
+                        .buttonStyle(.plain)
+                        .disabled(isJudged)
+                    }
+                }
+                if let score {
+                    Text(CharacterVoice.scoreGrading(score, word: insultWord))
+                        .font(.subheadline.bold())
+                }
                 TextField("Anything Captain Paranoia should let go of?", text: $note, axis: .vertical)
                     .disabled(isJudged)
             } header: {
-                Text("The verdict")
+                Text("The verdict — how much of \(CharacterVoice.article(for: insultWord)) \(insultWord) were you?")
             } footer: {
-                Text("Self-reported. The Monkeys will know if you lie. (They won't. But you will.)")
+                Text("The only mandatory question. Self-reported — the Monkeys will know if you lie. (They won't. But you will.)")
             }
 
             Section("Say it to camera") {
@@ -96,12 +143,12 @@ struct MorningAfterView: View {
             }
 
             Section {
-                TextField("Next session I will…", text: $oneChange, axis: .vertical)
+                TextField("Next time I will…", text: $oneChange, axis: .vertical)
                     .disabled(isJudged)
             } header: {
-                Text("The one change")
+                Text("The one change (optional, but wise)")
             } footer: {
-                Text("The only mandatory part. Shame fades by lunchtime; one concrete change doesn't.")
+                Text("Shame fades by lunchtime; one concrete change doesn't.")
             }
 
             if let savedLine {
@@ -121,7 +168,7 @@ struct MorningAfterView: View {
                             .frame(maxWidth: .infinity)
                     }
                     .buttonStyle(.borderedProminent)
-                    .disabled(oneChange.trimmingCharacters(in: .whitespaces).isEmpty)
+                    .disabled(score == nil)
                     .listRowBackground(Color.clear)
                     .listRowInsets(EdgeInsets())
                 }
@@ -141,11 +188,6 @@ struct MorningAfterView: View {
 
     // MARK: - Helpers
 
-    private var anSuffix: String {
-        let first = AppSettings.insultWord.lowercased().first
-        return "aeiou".contains(first ?? " ") ? "n" : ""
-    }
-
     private func bindingForBroken(_ commitment: Commitment) -> Binding<Bool> {
         Binding(
             get: { brokenFlags[commitment.id] ?? false },
@@ -153,23 +195,51 @@ struct MorningAfterView: View {
         )
     }
 
+    private func bindingForCrime(_ crime: String) -> Binding<Bool> {
+        Binding(
+            get: { selectedCrimes.contains(crime) },
+            set: { on in
+                if on { selectedCrimes.insert(crime) } else { selectedCrimes.remove(crime) }
+            }
+        )
+    }
+
+    private func addCustomCrime() {
+        let trimmed = newCrime.trimmingCharacters(in: .whitespaces)
+        guard !trimmed.isEmpty else { return }
+        CatalogService.rememberCrime(trimmed)
+        crimeOptions = CatalogService.allCrimes
+        // The typed text may differ in case from an existing entry — select the canonical one.
+        let canonical = crimeOptions.first { $0.caseInsensitiveCompare(trimmed) == .orderedSame } ?? trimmed
+        selectedCrimes.insert(canonical)
+        newCrime = ""
+    }
+
     private func loadExisting() {
         for commitment in plan.commitments {
             brokenFlags[commitment.id] = commitment.wasBroken ?? false
         }
         if let verdict = plan.verdict {
-            wasIdiot = verdict.wasIdiot
+            score = verdict.effectiveScore
+            selectedCrimes = Set(verdict.crimes)
+            // Show this session's crimes even if they were later removed from the catalog.
+            crimeOptions = CatalogService.allCrimes
+            for crime in verdict.crimes where !crimeOptions.contains(crime) {
+                crimeOptions.append(crime)
+            }
             oneChange = verdict.oneChange
             note = verdict.note
         }
     }
 
     private func saveVerdict() {
+        guard let score else { return }
+
         for commitment in plan.commitments {
             commitment.wasBroken = brokenFlags[commitment.id] ?? false
         }
 
-        let verdict = Verdict(wasIdiot: wasIdiot, oneChange: oneChange, note: note)
+        let verdict = Verdict(score: score, crimes: Array(selectedCrimes).sorted(), oneChange: oneChange, note: note)
         verdict.plan = plan
         plan.verdict = verdict
 
@@ -185,8 +255,8 @@ struct MorningAfterView: View {
 
         // Keep the widget honest immediately — don't wait for a Home visit.
         var snapshot = StreakSnapshot.load()
-        snapshot.insultWord = AppSettings.insultWord
-        if wasIdiot {
+        snapshot.insultWord = insultWord
+        if score > 0 {
             snapshot.hasIdiotHistory = true
             if snapshot.anchorDate.map({ plan.sessionStart > $0 }) ?? true {
                 snapshot.anchorDate = plan.sessionStart
@@ -195,8 +265,9 @@ struct MorningAfterView: View {
         snapshot.save()
         WidgetCenter.shared.reloadAllTimelines()
 
-        savedLine = wasIdiot
-            ? CharacterVoice.monkeyAfterIdiotVerdict(brutality: AppSettings.brutality, word: AppSettings.insultWord)
-            : CharacterVoice.monkeyAfterCleanVerdict(brutality: AppSettings.brutality, word: AppSettings.insultWord)
+        let monkeyLine = score > 0
+            ? CharacterVoice.monkeyAfterIdiotVerdict(brutality: AppSettings.brutality, word: insultWord)
+            : CharacterVoice.monkeyAfterCleanVerdict(brutality: AppSettings.brutality, word: insultWord)
+        savedLine = "\(CharacterVoice.scoreGrading(score, word: insultWord))\n\n\(monkeyLine)"
     }
 }

@@ -11,32 +11,36 @@ struct StreakServiceTests {
         return calendar.date(bySettingHour: hour, minute: 0, second: 0, of: day) ?? day
     }
 
-    @Test func daysSinceLastIdiotNight() {
-        let result = StreakService.daysSince(
-            lastIdiotDate: date(5),
-            firstUseDate: date(100)
-        )
-        #expect(result == 5)
-    }
+    // Owner-confirmed convention: incident night = day -, hangover morning = 0,
+    // first full clean day = 1.
 
-    @Test func fallsBackToFirstUseWhenNoIdiotVerdicts() {
-        let result = StreakService.daysSince(
-            lastIdiotDate: nil,
-            firstUseDate: date(12)
-        )
-        #expect(result == 12)
-    }
-
-    @Test func idiotNightLastNightMeansZero() {
-        // Session started yesterday evening; verdict this morning → 1 calendar day since the session date.
+    @Test func hangoverMorningIsDayZero() {
+        // Idiot night was last night; confessing this morning → streak 0.
         let result = StreakService.daysSince(
             lastIdiotDate: date(1),
+            firstUseDate: date(50)
+        )
+        #expect(result == 0)
+    }
+
+    @Test func oneCleanNightAfterIncidentIsDayOne() {
+        // Idiot night two nights ago, clean night last night → streak 1 this morning.
+        let result = StreakService.daysSince(
+            lastIdiotDate: date(2),
             firstUseDate: date(50)
         )
         #expect(result == 1)
     }
 
-    @Test func sameDayIsZero() {
+    @Test func daysSinceLastIdiotNightShiftsByOne() {
+        let result = StreakService.daysSince(
+            lastIdiotDate: date(5),
+            firstUseDate: date(100)
+        )
+        #expect(result == 4)
+    }
+
+    @Test func incidentEarlierTodayIsStillZero() {
         let result = StreakService.daysSince(
             lastIdiotDate: date(0, hour: 1),
             firstUseDate: date(50)
@@ -51,6 +55,15 @@ struct StreakServiceTests {
             firstUseDate: date(50)
         )
         #expect(result == 0)
+    }
+
+    @Test func fallsBackToFirstUseWithoutShiftWhenNoIncidents() {
+        // No hangover-day shift here: nothing happened, install day counts plainly.
+        let result = StreakService.daysSince(
+            lastIdiotDate: nil,
+            firstUseDate: date(12)
+        )
+        #expect(result == 12)
     }
 
     @Test func mostRecentIdiotDateWins() {
