@@ -6,6 +6,7 @@ import SwiftData
 struct PlanDetailView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
+    @Environment(AppRouter.self) private var router
     let plan: SessionPlan
 
     @AppStorage(SettingsKey.insultWord) private var insultWord = "idiot"
@@ -54,6 +55,11 @@ struct PlanDetailView: View {
                     }
                     if !verdict.note.isEmpty {
                         LabeledContent("Note") { Text(verdict.note) }
+                    }
+                    Button {
+                        router.verdictPlan = plan
+                    } label: {
+                        Label("Relive the roast", systemImage: "flame")
                     }
                 }
             } else {
