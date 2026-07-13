@@ -6,12 +6,12 @@ import SwiftData
 /// straight to the debrief. Regret shouldn't need a booking.
 struct UnplannedDebriefView: View {
     @Environment(\.modelContext) private var modelContext
-    @Environment(AppRouter.self) private var router
-    @Environment(\.dismiss) private var dismiss
+    /// Home's navigation path: the debrief is pushed as a value route so
+    /// "Finish — go face the day" can unwind the whole flow with a path reset.
+    @Binding var path: NavigationPath
 
     @State private var occasion = ""
     @State private var night: Date = Calendar.current.date(byAdding: .day, value: -1, to: Date()) ?? Date()
-    @State private var createdPlan: SessionPlan?
 
     var body: some View {
         Form {
@@ -46,14 +46,6 @@ struct UnplannedDebriefView: View {
             }
         }
         .navigationTitle("Unplanned night")
-        .navigationDestination(item: $createdPlan) { plan in
-            MorningAfterView(plan: plan)
-        }
-        .onChange(of: router.goHomeSignal) { _, _ in
-            // "Finish — go face the day": unwind this flow back to Home.
-            createdPlan = nil
-            dismiss()
-        }
     }
 
     private func startDebrief() {
@@ -68,6 +60,6 @@ struct UnplannedDebriefView: View {
         )
         modelContext.insert(plan)
         try? modelContext.save()
-        createdPlan = plan
+        path.append(HomeRoute.debrief(plan))
     }
 }

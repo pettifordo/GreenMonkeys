@@ -15,11 +15,22 @@ final class AppRouter {
     /// When set, RootView presents the dedicated verdict screen over everything.
     var verdictPlan: SessionPlan?
 
-    /// Bumped by "Finish — go face the day"; every presenting view unwinds to Home.
+    /// Bumped after the verdict cover has fully dismissed; every presenting view
+    /// unwinds to Home. (Firing while the cover is still animating gets the
+    /// navigation pops silently dropped by SwiftUI.)
     var goHomeSignal = 0
 
+    private var pendingGoHome = false
+
     func finishToHome() {
+        pendingGoHome = true
         verdictPlan = nil
+    }
+
+    /// Called from the cover's onDismiss, once the animation has completed.
+    func consumePendingGoHome() {
+        guard pendingGoHome else { return }
+        pendingGoHome = false
         goHomeSignal += 1
     }
 }

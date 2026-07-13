@@ -28,7 +28,9 @@ struct RootView: View {
                 LockView(onUnlocked: { unlocked = true })
             }
         }
-        .fullScreenCover(item: $router.verdictPlan) { plan in
+        .fullScreenCover(item: $router.verdictPlan, onDismiss: {
+            router.consumePendingGoHome()
+        }) { plan in
             NavigationStack { VerdictView(plan: plan) }
         }
         .onChange(of: router.goHomeSignal) { _, _ in

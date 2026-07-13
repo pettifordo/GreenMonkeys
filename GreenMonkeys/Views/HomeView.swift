@@ -21,6 +21,12 @@ enum ScreenshotCover: Identifiable {
     }
 }
 
+/// Value-based routes for HomeView's stack, so a path reset can unwind them.
+enum HomeRoute: Hashable {
+    case unplanned
+    case debrief(SessionPlan)
+}
+
 struct HomeView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(AppRouter.self) private var router
@@ -99,9 +105,7 @@ struct HomeView: View {
                 }
 
                 Section {
-                    NavigationLink {
-                        UnplannedDebriefView()
-                    } label: {
+                    NavigationLink(value: HomeRoute.unplanned) {
                         Label("Rough morning, no plan? Confess", systemImage: "sunrise")
                     }
                 } footer: {
@@ -115,6 +119,12 @@ struct HomeView: View {
                 case .active:                     SessionLiveView(plan: plan)
                 case .awaitingVerdict:            MorningAfterView(plan: plan)
                 case .completed:                  PlanDetailView(plan: plan)
+                }
+            }
+            .navigationDestination(for: HomeRoute.self) { route in
+                switch route {
+                case .unplanned:               UnplannedDebriefView(path: $path)
+                case .debrief(let plan):       MorningAfterView(plan: plan)
                 }
             }
             .toolbar {
