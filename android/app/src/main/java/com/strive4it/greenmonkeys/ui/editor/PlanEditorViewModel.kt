@@ -48,6 +48,7 @@ data class EditorUiState(
     val savedCustomPromises: List<String> = emptyList(),
     val sessionNoun: String = "Session",
     val patternCallback: String? = null,
+    val planVideoFileName: String? = null,
     val saved: Boolean = false,
 ) {
     val canSave: Boolean get() = drafts.isNotEmpty()
@@ -146,6 +147,9 @@ class PlanEditorViewModel(
         refreshCallback()
     }
 
+    fun attachPlanVideo(fileName: String) =
+        _uiState.update { it.copy(planVideoFileName = fileName) }
+
     fun toggleReminder(minutes: Int) {
         _uiState.update { state ->
             val offsets = if (minutes in state.reminderOffsets) {
@@ -193,6 +197,16 @@ class PlanEditorViewModel(
             // Custom promises join the catalog for future plans.
             for (draft in state.drafts.filter { it.kind == CommitmentKind.CUSTOM }) {
                 settings.rememberPromise(draft.detail)
+            }
+
+            state.planVideoFileName?.let { fileName ->
+                repository.addVideo(
+                    com.strive4it.greenmonkeys.data.SessionVideoEntity(
+                        planId = plan.id,
+                        kind = com.strive4it.greenmonkeys.logic.VideoKind.PLAN.rawValue,
+                        fileName = fileName,
+                    )
+                )
             }
 
             repository.getPlan(plan.id)?.let { scheduler.schedule(it, settings) }

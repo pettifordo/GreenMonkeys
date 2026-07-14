@@ -4,22 +4,30 @@ import android.Manifest
 import android.content.Intent
 import android.os.Build
 import android.os.Bundle
-import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.biometric.BiometricManager.Authenticators.BIOMETRIC_WEAK
+import androidx.biometric.BiometricManager.Authenticators.DEVICE_CREDENTIAL
+import androidx.biometric.BiometricPrompt
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.core.content.ContextCompat
+import androidx.fragment.app.FragmentActivity
 import androidx.navigation.compose.rememberNavController
 import com.strive4it.greenmonkeys.ui.AppNavHost
+import com.strive4it.greenmonkeys.ui.lock.LockScreen
 import com.strive4it.greenmonkeys.ui.theme.GreenMonkeysTheme
+import kotlinx.coroutines.flow.first
 
-class MainActivity : ComponentActivity() {
+// FragmentActivity, not ComponentActivity: BiometricPrompt requires it.
+class MainActivity : FragmentActivity() {
 
     companion object {
         const val EXTRA_PLAN_ID = "planId"
@@ -31,6 +39,10 @@ class MainActivity : ComponentActivity() {
     data class PendingRoute(val planId: String, val route: String)
 
     private var pendingRoute by mutableStateOf<PendingRoute?>(null)
+
+    /** null = still reading the setting; true = locked (SPEC §5, default ON). */
+    private var locked by mutableStateOf<Boolean?>(null)
+    private var lockEnabled = true
 
     private val notificationPermission =
         registerForActivityResult(ActivityResultContracts.RequestPermission()) { /* degrade silently */ }
@@ -52,15 +64,35 @@ class MainActivity : ComponentActivity() {
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background,
                 ) {
-                    val navController = rememberNavController()
-                    AppNavHost(
-                        navController = navController,
-                        pendingRoute = pendingRoute,
-                        onPendingRouteConsumed = { pendingRoute = null },
-                    )
+                    LaunchedEffect(Unit) {
+                        if (locked == null) {
+                            val app = application as GreenMonkeysApp
+                            lockEnabled = app.settings.appLockEnabled.first()
+                            locked = lockEnabled
+                            if (lockEnabled) authenticate()
+                        }
+                    }
+                    when (locked) {
+                        true -> LockScreen(onUnlock = ::authenticate)
+                        false -> {
+                            val navController = rememberNavController()
+                            AppNavHost(
+                                navController = navController,
+                                pendingRoute = pendingRoute,
+                                onPendingRouteConsumed = { pendingRoute = null },
+                            )
+                        }
+                        null -> {} // reading the lock setting
+                    }
                 }
             }
         }
+    }
+
+    override fun onStop() {
+        super.onStop()
+        // Re-lock whenever the app leaves the foreground.
+        if (lockEnabled) locked = true
     }
 
     override fun onNewIntent(intent: Intent) {
@@ -72,5 +104,28 @@ class MainActivity : ComponentActivity() {
         val planId = intent?.getStringExtra(EXTRA_PLAN_ID) ?: return
         val route = intent.getStringExtra(EXTRA_ROUTE) ?: return
         pendingRoute = PendingRoute(planId, route)
+    }
+
+    private fun authenticate() {
+        val prompt = BiometricPrompt(
+            this,
+            ContextCompat.getMainExecutor(this),
+            object : BiometricPrompt.AuthenticationCallback() {
+                override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult) {
+                    locked = false
+                }
+            },
+        )
+        val info = BiometricPrompt.PromptInfo.Builder()
+            .setTitle("Green Monkeys is locked")
+            .setSubtitle("Your videos stay between you and the Monkeys.")
+            .setAllowedAuthenticators(BIOMETRIC_WEAK or DEVICE_CREDENTIAL)
+            .build()
+        try {
+            prompt.authenticate(info)
+        } catch (_: Exception) {
+            // No biometrics and no device credential set up: don't brick the app.
+            locked = false
+        }
     }
 }

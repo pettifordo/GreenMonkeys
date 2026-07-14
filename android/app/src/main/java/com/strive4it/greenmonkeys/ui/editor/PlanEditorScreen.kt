@@ -49,12 +49,21 @@ import java.util.Locale
 @Composable
 fun PlanEditorScreen(
     onDone: () -> Unit,
+    onRecordPlanVideo: () -> Unit = {},
+    recordedVideoFileName: String? = null,
+    onRecordedVideoConsumed: () -> Unit = {},
     viewModel: PlanEditorViewModel = viewModel(factory = PlanEditorViewModel.Factory),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
 
     LaunchedEffect(state.saved) {
         if (state.saved) onDone()
+    }
+    LaunchedEffect(recordedVideoFileName) {
+        recordedVideoFileName?.let {
+            viewModel.attachPlanVideo(it)
+            onRecordedVideoConsumed()
+        }
     }
 
     Scaffold(
@@ -135,6 +144,25 @@ fun PlanEditorScreen(
             item {
                 Text(
                     "Each check-in resurfaces the plan with one tap to record drunk-you.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+
+            item { SectionHeader("Message from sober you") }
+            item {
+                if (state.planVideoFileName != null) {
+                    Text("✅ Plan video recorded", color = MaterialTheme.colorScheme.primary)
+                } else {
+                    TextButton(onClick = onRecordPlanVideo) {
+                        Text("🎥 Record your plan video")
+                    }
+                }
+            }
+            item {
+                Text(
+                    "30 seconds of sober you saying exactly what the plan is. " +
+                        "Tomorrow-you will thank you. Or wince.",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )

@@ -51,6 +51,14 @@ dependencies {
     ksp(libs.room.compiler)
     implementation(libs.datastore.preferences)
     implementation(libs.navigation.compose)
+    implementation(libs.camera.core)
+    implementation(libs.camera.camera2)
+    implementation(libs.camera.lifecycle)
+    implementation(libs.camera.video)
+    implementation(libs.camera.view)
+    implementation(libs.biometric)
+    implementation(libs.glance.appwidget)
+    implementation(libs.work.runtime.ktx)
 
     testImplementation(libs.junit)
 
