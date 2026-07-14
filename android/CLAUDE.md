@@ -22,6 +22,19 @@ cd android
 ./gradlew :app:assembleDebug       # debug APK
 ```
 
+**Emulator** (installed; AVD `gm-test` = Pixel 7 / API 35 arm64):
+
+```bash
+export ANDROID_SDK_ROOT="$HOME/Library/Android/sdk"
+"$ANDROID_SDK_ROOT/emulator/emulator" -avd gm-test -no-window -no-audio -no-boot-anim -no-snapshot -gpu swiftshader_indirect &
+"$ANDROID_SDK_ROOT/platform-tools/adb" wait-for-device   # then poll sys.boot_completed
+adb install -r app/build/outputs/apk/debug/app-debug.apk
+adb shell am start -n com.strive4it.greenmonkeys/.MainActivity
+adb exec-out screencap -p > /tmp/screen.png             # verify visually
+adb shell "dumpsys alarm | grep -A3 greenmonkeys"       # verify scheduled nudges
+adb emu kill
+```
+
 **Android SDK:** installed at `~/Library/Android/sdk` (licenses accepted
 2026-07-14, owner-approved) with platform-tools, platforms;android-35 and
 build-tools;35.0.0; `android/local.properties` (gitignored) points at it. If
@@ -36,19 +49,30 @@ imports so it also compiles and tests on plain JVM; keep it that way.
 android/
 ├── settings.gradle.kts / build.gradle.kts / gradle/libs.versions.toml
 └── app/src/main/java/com/strive4it/greenmonkeys/
-    ├── MainActivity.kt          # placeholder home
+    ├── MainActivity.kt          # nav host + notification-tap routing
+    ├── GreenMonkeysApp.kt       # composition root (no DI framework)
     ├── logic/                   # PURE logic, no Android imports, fully tested
     │   ├── StreakService.kt     # ported from iOS Shared/StreakService.swift
     │   ├── PatternService.kt    # ported from iOS Services/PatternService.swift
-    │   └── CharacterVoice.kt    # THE VOICE — see below
-    └── ui/theme/Theme.kt
-    src/test/java/.../logic/     # 27 tests ported 1:1 from GreenMonkeysTests/
+    │   ├── CharacterVoice.kt    # THE VOICE — see below
+    │   ├── PlanStatus.kt        # derived status + 6h grace (SPEC §4)
+    │   ├── CommitmentKind.kt / VideoKind.kt / ReminderTimes.kt / CatalogLogic.kt
+    ├── data/                    # Room: 4 entities, PlanWithDetails, insert-only verdicts
+    ├── settings/                # DataStore: word/noun/brutality/hour/lock + catalogs
+    ├── notifications/           # NudgeScheduler (AlarmManager) + Nudge/Boot receivers
+    └── ui/                      # AppNavHost (ONE graph), home/, editor/, detail/, theme/
+    src/test/java/.../logic/     # 47 JVM tests (27 ported 1:1 + 20 new)
 ```
 
-Planned packages as features land (brief §4): `data/` (Room entities mirroring
-SessionPlan/Commitment/SessionVideo/Verdict — status DERIVED from dates +
-verdict, never stored), `notifications/` (AlarmManager exact alarms),
-`capture/` (CameraX), `widget/` (Glance).
+Built so far: scaffold, pure logic, data layer, Home, plan editor,
+notification chain, plan detail with two-stage delete. NOT yet built (next
+per brief §8): session-live screen, morning-after debrief + verdict/roast,
+unplanned-night confession, pattern screen, settings screen (incl. exact-
+alarm rationale — currently silently falls back to inexact because
+SCHEDULE_EXACT_ALARM starts denied on API 34+), CameraX capture, video
+store, biometric lock, Glance widget, charts. Coming-soon routes in
+AppNavHost mark the gaps. Planned packages: `capture/` (CameraX),
+`widget/` (Glance).
 
 ## Hard rules (same as iOS — root CLAUDE.md rules all apply)
 
