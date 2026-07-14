@@ -8,6 +8,9 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -42,12 +45,19 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             GreenMonkeysTheme {
-                val navController = rememberNavController()
-                AppNavHost(
-                    navController = navController,
-                    pendingRoute = pendingRoute,
-                    onPendingRouteConsumed = { pendingRoute = null },
-                )
+                // Surface supplies background + content colors for every screen;
+                // without it, bare composables draw black-on-black (shipped bug).
+                Surface(
+                    modifier = Modifier.fillMaxSize(),
+                    color = MaterialTheme.colorScheme.background,
+                ) {
+                    val navController = rememberNavController()
+                    AppNavHost(
+                        navController = navController,
+                        pendingRoute = pendingRoute,
+                        onPendingRouteConsumed = { pendingRoute = null },
+                    )
+                }
             }
         }
     }

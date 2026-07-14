@@ -4,7 +4,10 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
@@ -78,20 +81,35 @@ fun AppNavHost(
         }
         composable(Routes.COMING_SOON) { backStackEntry ->
             val what = backStackEntry.arguments?.getString("what") ?: "This screen"
-            ComingSoonScreen(what)
+            ComingSoonScreen(what, onBack = { navController.popBackStack() })
         }
     }
 }
 
 /** Honest placeholder for flows that land in the next build phase (brief §8). */
+@OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 @Composable
-private fun ComingSoonScreen(what: String) {
-    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-        Text(
-            "$what arrives in the next build.\nThe Monkeys are still packing. 🐒",
-            textAlign = TextAlign.Center,
-            style = MaterialTheme.typography.bodyLarge,
-            modifier = Modifier.padding(24.dp),
-        )
+private fun ComingSoonScreen(what: String, onBack: () -> Unit) {
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = {},
+                navigationIcon = { TextButton(onClick = onBack) { Text("‹ Back") } },
+            )
+        },
+    ) { padding ->
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding),
+            contentAlignment = Alignment.Center,
+        ) {
+            Text(
+                "$what arrives in the next build.\nThe Monkeys are still packing. 🐒",
+                textAlign = TextAlign.Center,
+                style = MaterialTheme.typography.bodyLarge,
+                modifier = Modifier.padding(24.dp),
+            )
+        }
     }
 }
