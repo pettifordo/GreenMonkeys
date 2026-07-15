@@ -64,15 +64,18 @@ android/
     src/test/java/.../logic/     # 47 JVM tests (27 ported 1:1 + 20 new)
 ```
 
-Built so far: scaffold, pure logic, data layer, Home, plan editor,
-notification chain, plan detail with two-stage delete. NOT yet built (next
-per brief §8): session-live screen, morning-after debrief + verdict/roast,
-unplanned-night confession, pattern screen, settings screen (incl. exact-
-alarm rationale — currently silently falls back to inexact because
-SCHEDULE_EXACT_ALARM starts denied on API 34+), CameraX capture, video
-store, biometric lock, Glance widget, charts. Coming-soon routes in
-AppNavHost mark the gaps. Planned packages: `capture/` (CameraX),
-`widget/` (Glance).
+**v1 feature-complete (2026-07-15), all screens live:** Home, plan editor,
+session-live, morning-after debrief, verdict/roast, unplanned confession,
+pattern (Canvas charts — clean nights are green dots, dashed average),
+settings (incl. exact-alarm rationale row shown while SCHEDULE_EXACT_ALARM
+is denied), CameraX front-camera recorder (120s cap) + `capture/VideoStore`
+(filesDir/videos) + VideoView playback, BiometricPrompt lock (default ON;
+fails OPEN when no PIN/biometric enrolled — never brick the app), Glance
+streak widget (anchor-date-only snapshot, WorkManager midnight refresh).
+Verified end-to-end on emulator: confess → score → roast → Finish unwinds
+to Home with red 0. Not yet done: Play listing assets/adaptive icon,
+screenshot rig, docs/ wording update for Android, real-device camera test
+(emulator uses the fake camera).
 
 ## Hard rules (same as iOS — root CLAUDE.md rules all apply)
 
