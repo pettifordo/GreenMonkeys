@@ -7,6 +7,7 @@ import android.os.Bundle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.biometric.BiometricManager
 import androidx.biometric.BiometricManager.Authenticators.BIOMETRIC_WEAK
 import androidx.biometric.BiometricManager.Authenticators.DEVICE_CREDENTIAL
 import androidx.biometric.BiometricPrompt
@@ -107,6 +108,15 @@ class MainActivity : FragmentActivity() {
     }
 
     private fun authenticate() {
+        // Nothing enrolled (no PIN, no biometrics): the lock cannot protect
+        // anything and must not brick the app.
+        val authenticators = BIOMETRIC_WEAK or DEVICE_CREDENTIAL
+        if (BiometricManager.from(this).canAuthenticate(authenticators) !=
+            BiometricManager.BIOMETRIC_SUCCESS
+        ) {
+            locked = false
+            return
+        }
         val prompt = BiometricPrompt(
             this,
             ContextCompat.getMainExecutor(this),
@@ -114,18 +124,24 @@ class MainActivity : FragmentActivity() {
                 override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult) {
                     locked = false
                 }
+
+                override fun onAuthenticationError(errorCode: Int, errString: CharSequence) {
+                    // Credential setup vanished mid-flight: fail open rather than brick.
+                    // User cancellation keeps the lock screen (Unlock retries).
+                    if (errorCode == BiometricPrompt.ERROR_NO_DEVICE_CREDENTIAL ||
+                        errorCode == BiometricPrompt.ERROR_NO_BIOMETRICS ||
+                        errorCode == BiometricPrompt.ERROR_HW_NOT_PRESENT
+                    ) {
+                        locked = false
+                    }
+                }
             },
         )
         val info = BiometricPrompt.PromptInfo.Builder()
             .setTitle("Green Monkeys is locked")
             .setSubtitle("Your videos stay between you and the Monkeys.")
-            .setAllowedAuthenticators(BIOMETRIC_WEAK or DEVICE_CREDENTIAL)
+            .setAllowedAuthenticators(authenticators)
             .build()
-        try {
-            prompt.authenticate(info)
-        } catch (_: Exception) {
-            // No biometrics and no device credential set up: don't brick the app.
-            locked = false
-        }
+        prompt.authenticate(info)
     }
 }
