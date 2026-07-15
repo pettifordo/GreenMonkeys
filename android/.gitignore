@@ -1,6 +1,9 @@
 .gradle/
 build/
 local.properties
+# Release signing — never commit the key or its passwords (repo is public).
+keystore/
+keystore.properties
 .idea/
 *.iml
 .DS_Store
