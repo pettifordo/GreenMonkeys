@@ -272,6 +272,11 @@ struct MorningAfterView: View {
                 snapshot.anchorDate = plan.sessionStart
             }
         }
+        let allPlans = (try? modelContext.fetch(FetchDescriptor<SessionPlan>())) ?? []
+        let idiotDates = allPlans
+            .filter { ($0.verdict?.effectiveScore ?? 0) > 0 }
+            .map(\.sessionStart)
+        snapshot.longestStreak = StreakService.longestStreak(idiotDates: idiotDates, firstUseDate: AppSettings.firstUseDate)
         snapshot.save()
         WidgetCenter.shared.reloadAllTimelines()
         // The roast section renders now that plan.verdict exists.

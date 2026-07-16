@@ -74,4 +74,49 @@ struct StreakServiceTests {
     @Test func noIdiotDatesReturnsNil() {
         #expect(StreakService.lastIdiotDate(idiotVerdictSessionStarts: []) == nil)
     }
+
+    // MARK: - Longest streak
+
+    @Test func longestWithNoIncidentsIsTheCurrentRun() {
+        let result = StreakService.longestStreak(idiotDates: [], firstUseDate: date(12))
+        #expect(result == 12)
+    }
+
+    @Test func longestPicksTheBiggestGapBetweenIncidents() {
+        // Install 30 days ago; incidents 25 and 10 days ago.
+        // Segments: pre-first = 5, between = 15 - 1 = 14, current = 10 - 1 = 9.
+        let result = StreakService.longestStreak(
+            idiotDates: [date(25), date(10)],
+            firstUseDate: date(30)
+        )
+        #expect(result == 14)
+    }
+
+    @Test func longestCanBeTheCurrentRun() {
+        // Install 40 days ago; incidents 35 and 30 days ago.
+        // Segments: pre-first = 5, between = 4, current = 29.
+        let result = StreakService.longestStreak(
+            idiotDates: [date(35), date(30)],
+            firstUseDate: date(40)
+        )
+        #expect(result == 29)
+    }
+
+    @Test func longestCanBeThePreFirstIncidentRun() {
+        // Install 50 days ago; first incident only 3 days ago: pre-first = 47 wins.
+        let result = StreakService.longestStreak(
+            idiotDates: [date(3)],
+            firstUseDate: date(50)
+        )
+        #expect(result == 47)
+    }
+
+    @Test func sameNightIncidentsCollapseToOneDay() {
+        let result = StreakService.longestStreak(
+            idiotDates: [date(10, hour: 20), date(10, hour: 22)],
+            firstUseDate: date(15)
+        )
+        // Segments: pre-first = 5, current = 9.
+        #expect(result == 9)
+    }
 }

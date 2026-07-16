@@ -10,6 +10,9 @@ struct StreakSnapshot: Codable {
     var hasIdiotHistory: Bool
     var firstUseDate: Date
     var insultWord: String
+    /// Best clean run ever, precomputed by the app (the widget can't see the
+    /// session store). Optional so snapshots written before this field decode.
+    var longestStreak: Int? = nil
 
     static let appGroupID = "group.com.strive4it.greenmonkeys"
     private static let key = "streakSnapshot"

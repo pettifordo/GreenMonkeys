@@ -15,11 +15,12 @@ struct StreakEntry: TimelineEntry {
     let days: Int
     let word: String
     let hasHistory: Bool
+    let longest: Int?
 }
 
 struct StreakProvider: TimelineProvider {
     func placeholder(in context: Context) -> StreakEntry {
-        StreakEntry(date: Date(), days: 12, word: "idiot", hasHistory: true)
+        StreakEntry(date: Date(), days: 12, word: "idiot", hasHistory: true, longest: 34)
     }
 
     func getSnapshot(in context: Context, completion: @escaping (StreakEntry) -> Void) {
@@ -41,11 +42,14 @@ struct StreakProvider: TimelineProvider {
 
     private func entry(for date: Date) -> StreakEntry {
         let snapshot = StreakSnapshot.load()
+        let current = snapshot.days(now: date)
         return StreakEntry(
             date: date,
-            days: snapshot.days(now: date),
+            days: current,
             word: snapshot.insultWord,
-            hasHistory: snapshot.hasIdiotHistory
+            hasHistory: snapshot.hasIdiotHistory,
+            // The current run can overtake the stored best between app opens.
+            longest: snapshot.longestStreak.map { max($0, current) }
         )
     }
 }
@@ -89,8 +93,15 @@ struct StreakWidgetView: View {
             VStack(alignment: .leading, spacing: 1) {
                 Text("🐒 Days since \(article) \(entry.word)")
                     .font(.caption2)
-                Text("\(entry.days)")
-                    .font(.title.bold())
+                HStack(alignment: .lastTextBaseline, spacing: 6) {
+                    Text("\(entry.days)")
+                        .font(.title.bold())
+                    if let longest = entry.longest {
+                        Text("best \(longest)")
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                    }
+                }
             }
         case .accessoryInline:
             Text("🐒 \(entry.days) days \(entry.word)-free")
@@ -105,8 +116,14 @@ struct StreakWidgetView: View {
                 Text("\(entry.days)")
                     .font(.system(size: 44, weight: .black, design: .rounded))
                     .foregroundStyle(isAtZero ? .red : .green)
-                Text("🐒")
-                    .font(.caption)
+                if let longest = entry.longest {
+                    Text(entry.days >= longest && entry.days > 0 ? "🐒 personal best!" : "🐒 best: \(longest)")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                } else {
+                    Text("🐒")
+                        .font(.caption)
+                }
             }
         }
     }

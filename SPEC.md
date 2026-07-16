@@ -49,6 +49,10 @@ Home screen headline: **"Days since you were a(n) [WORD]"**.
   day 1. (Confess Saturday morning → 0; clean Saturday night → 1 on Sunday.)
 - If no idiot verdict has ever been recorded, count plainly from first app use
   (no hangover-day shift — nothing happened).
+- **Longest clean streak** (best run ever, including the current one) is shown
+  on the pattern screen and the widget. Computed with the same day
+  conventions; the widget receives it via the snapshot and shows
+  "personal best!" when the current run is the record.
 
 ## 2a. Configurable vocabulary & catalogs
 

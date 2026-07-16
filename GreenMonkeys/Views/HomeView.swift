@@ -271,7 +271,8 @@ struct HomeView: View {
             anchorDate: StreakService.lastIdiotDate(idiotVerdictSessionStarts: idiotDates),
             hasIdiotHistory: !idiotDates.isEmpty,
             firstUseDate: AppSettings.firstUseDate,
-            insultWord: insultWord
+            insultWord: insultWord,
+            longestStreak: StreakService.longestStreak(idiotDates: idiotDates, firstUseDate: AppSettings.firstUseDate)
         ).save()
         WidgetCenter.shared.reloadAllTimelines()
     }

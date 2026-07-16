@@ -34,6 +34,13 @@ struct HistoryView: View {
         }
     }
 
+    private var longestStreak: Int {
+        StreakService.longestStreak(
+            idiotDates: plans.filter { ($0.verdict?.effectiveScore ?? 0) > 0 }.map(\.sessionStart),
+            firstUseDate: AppSettings.firstUseDate
+        )
+    }
+
     private var nightPoints: [NightPoint] {
         judged
             .sorted { $0.sessionStart < $1.sessionStart }
@@ -60,6 +67,7 @@ struct HistoryView: View {
                     if let worst = scores.max() {
                         LabeledContent("Personal best (worst)", value: "\(worst) / 5")
                     }
+                    LabeledContent("Longest clean streak", value: "\(longestStreak) days")
                 } else {
                     Text("No judged sessions yet. The Monkeys await their first case.")
                         .foregroundStyle(.secondary)
