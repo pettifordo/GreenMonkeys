@@ -58,6 +58,13 @@ force-unwraps outside tests. Every Service with logic gets tests; keep logic
 testable as pure functions on value types where possible (see PatternService,
 StreakService).
 
+## Cross-platform sync
+
+There are TWO apps: iOS (this tree) and Android (`android/`, see its own
+CLAUDE.md). Any change to product behaviour on either platform MUST get a
+PENDING entry in `ANDROID-CHANGELOG.md` (what, why, port notes) and stays
+there until applied to the other platform. Site (`docs/`) serves both.
+
 ## Hard rules
 
 1. **No analytics, telemetry, or any SDK that calls home. Local-only, always.**

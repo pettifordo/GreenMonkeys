@@ -124,3 +124,10 @@ before launch. Verify the Strive4 Play developer account before assuming it.
 ## User preferences
 
 Owner prefers concise output and honest uncertainty. Avoid filler.
+
+## Cross-platform sync
+
+Product-behaviour changes on either platform get a PENDING entry in
+`../ANDROID-CHANGELOG.md` until ported to the other. Check it at the start of
+every session — pending iOS entries are your work queue. Flip entries to
+APPLIED (with your commit hash) when done.
