@@ -7,6 +7,7 @@ struct SettingsView: View {
     @AppStorage(SettingsKey.brutality) private var brutality = Brutality.standard.rawValue
     @AppStorage(SettingsKey.morningAfterHour) private var morningAfterHour = 9
     @AppStorage(SettingsKey.appLockEnabled) private var appLockEnabled = true
+    @AppStorage(SettingsKey.seedLongestStreak) private var seedLongestStreak = 0
 
     @State private var customWord = ""
     @State private var customNoun = ""
@@ -112,6 +113,23 @@ struct SettingsView: View {
                 Text("Your booze-crime list")
             } footer: {
                 Text("The built-in charges can't be removed. The law is the law.")
+            }
+
+            Section {
+                HStack {
+                    Text("Longest streak to beat")
+                    Spacer()
+                    TextField("0", value: $seedLongestStreak, format: .number)
+                        .keyboardType(.numberPad)
+                        .multilineTextAlignment(.trailing)
+                        .frame(maxWidth: 100)
+                    Text("days")
+                        .foregroundStyle(.secondary)
+                }
+            } header: {
+                Text("Your record before the app")
+            } footer: {
+                Text("Already know your longest clean run? Enter it and the app won't call a new personal best until you've beaten it. A challenge from past-you to future-you.")
             }
 
             Section("The morning after") {

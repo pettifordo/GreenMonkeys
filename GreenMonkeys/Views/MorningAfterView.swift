@@ -1,6 +1,24 @@
 import SwiftUI
 import SwiftData
 import WidgetKit
+import PhotosUI
+
+/// Receives a picked library video as a temp file we own (the picker's file
+/// is only valid inside the import closure).
+struct PickedMovie: Transferable {
+    let url: URL
+
+    static var transferRepresentation: some TransferRepresentation {
+        FileRepresentation(contentType: .movie) { movie in
+            SentTransferredFile(movie.url)
+        } importing: { received in
+            let destination = FileManager.default.temporaryDirectory
+                .appendingPathComponent(UUID().uuidString + ".mov")
+            try FileManager.default.copyItem(at: received.file, to: destination)
+            return PickedMovie(url: destination)
+        }
+    }
+}
 
 /// The debrief: watch the evidence, judge each promise, confess the booze
 /// crimes, and score yourself 0–5. Only the score is mandatory — but the flow
@@ -22,8 +40,15 @@ struct MorningAfterView: View {
     @State private var showingCamera = false
     @State private var playingVideo: SessionVideo?
     @State private var crimeOptions: [String] = CatalogService.allCrimes
+    @State private var pickedVideo: PhotosPickerItem?
 
     private var isJudged: Bool { plan.verdict != nil }
+
+    /// Retro sessions (the confess flow) have no promises and no reminders —
+    /// drunk-you COULDN'T have recorded in-app, so don't accuse.
+    private var isUnplanned: Bool {
+        plan.commitments.isEmpty && plan.reminderOffsetsMinutes.isEmpty
+    }
 
     var body: some View {
         List {
@@ -69,8 +94,20 @@ struct MorningAfterView: View {
                 }
                 if plan.video(.drunk) == nil {
                     Section {
-                        Text("No drunk video recorded. Suspiciously tidy, or too far gone to film?")
-                            .foregroundStyle(.secondary)
+                        if !isUnplanned {
+                            Text("No drunk video recorded. Suspiciously tidy, or too far gone to film?")
+                                .foregroundStyle(.secondary)
+                        }
+                        PhotosPicker(selection: $pickedVideo, matching: .videos) {
+                            Label(
+                                isUnplanned ? "Add a video from last night" : "Import one from your library",
+                                systemImage: "square.and.arrow.down"
+                            )
+                        }
+                    } footer: {
+                        if isUnplanned {
+                            Text("Someone filmed it, didn't they. Add it to the evidence — imports stay on this phone like everything else.")
+                        }
                     }
                 }
             }
@@ -186,6 +223,19 @@ struct MorningAfterView: View {
         }
         .navigationTitle("The morning after")
         .onAppear { loadExisting() }
+        .onChange(of: pickedVideo) { _, item in
+            guard let item else { return }
+            Task {
+                if let movie = try? await item.loadTransferable(type: PickedMovie.self),
+                   let fileName = try? VideoStore.shared.store(temporaryURL: movie.url) {
+                    let video = SessionVideo(kind: .drunk, fileName: fileName)
+                    video.plan = plan
+                    plan.videos.append(video)
+                    try? modelContext.save()
+                }
+                pickedVideo = nil
+            }
+        }
         .fullScreenCover(isPresented: $showingCamera) {
             CameraRecorderView { url in
                 morningVideoFileName = try? VideoStore.shared.store(temporaryURL: url)

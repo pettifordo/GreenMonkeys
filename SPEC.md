@@ -49,6 +49,10 @@ Home screen headline: **"Days since you were a(n) [WORD]"**.
   day 1. (Confess Saturday morning → 0; clean Saturday night → 1 on Sunday.)
 - If no idiot verdict has ever been recorded, count plainly from first app use
   (no hangover-day shift — nothing happened).
+- **Longest streak** is shown on the home card, pattern screen, and widget:
+  `max(best run the app has witnessed, user-seeded pre-app record)`. The seed
+  ("Longest streak to beat", Settings) lets users challenge their own history;
+  "personal best" language only triggers once the effective record is beaten.
 - **Longest clean streak** (best run ever, including the current one) is shown
   on the pattern screen and the widget. Computed with the same day
   conventions; the widget receives it via the snapshot and shows
@@ -57,7 +61,7 @@ Home screen headline: **"Days since you were a(n) [WORD]"**.
 ## 2a. Configurable vocabulary & catalogs
 
 - **Session noun**: what the user calls a drinking occasion — presets
-  Session / Night Out / Drink / Cheeky One, plus custom. Drives the
+  Session / Night Out / Drink / Cheeky One / Risk Event, plus custom. Drives the
   "Plan a [noun]" button, "No [noun] planned" empty state, and editor titles.
 - **Promise list**: built-in kinds plus user-added custom promises. Any custom
   promise used in a plan is remembered and offered again next time. Managed

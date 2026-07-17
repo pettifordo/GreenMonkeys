@@ -18,6 +18,51 @@ roast, charts, catalogs, widget, and app lock.
 
 ## PENDING → Android
 
+### 2026-07-17 · iOS 1.1 feature batch (owner-requested)
+
+One release's worth of changes; port as a set. iOS is now marketing 1.1,
+build 1 — bump Android versionName to 1.1 when ported.
+
+1. **Longest streak on the Home card.** Under the tagline: `Longest streak: N
+   days`, switching to `🏆 Personal best — beat yesterday's you again
+   tomorrow` when current ≥ longest and > 0.
+2. **Seeded personal record (Settings).** New setting "Longest streak to beat"
+   (`seedLongestStreak`, non-negative Int, numeric field): a pre-app record to
+   challenge yourself against. Effective longest = `max(computed, seed)`
+   everywhere (home, pattern, widget snapshot). App never claims a personal
+   best until the seed is beaten.
+3. **"Risk Event" added to the session-noun presets** (after Cheeky One).
+4. **Pattern charts reworked** (owner feedback: green dot was unclear, average
+   RuleMark collided with bars):
+   - Score chart is now a **curvy line** (Catmull-Rom) with points coloured by
+     severity (green when average < 0.5) — zero nights are naturally on the
+     line, no dot hack; average rule REMOVED.
+   - **Trend forecast**: least-squares fit over the plotted points (≥ 3 points
+     required — "predicting from two nights is astrology"), drawn as a dashed
+     secondary line from the last bucket to one horizon ahead (night→+7 d,
+     week→+2 w, month→+2 m, year→+1 y), values clamped 0–5. Footer commentary
+     by slope: improving / heading the wrong way / flat.
+   - **Period picker** (segmented: Night / Week / Month / Year) feeding both
+     charts: buckets by calendar period with MEAN score and SUMMED misdeeds.
+     See `PatternService.aggregate` + `trend` and the 6 new tests
+     (week/month bucketing, trend slopes, clamping).
+5. **Unplanned debrief video import.** Retro sessions (no commitments AND no
+   reminders) must NOT say "No drunk video recorded" — drunk-you couldn't
+   have. Instead: "Add a video from last night" via the system photo picker
+   (no permission prompt needed on either platform: PHPicker / Android Photo
+   Picker), imported copy stored in the protected video store as a `drunk`
+   video. Planned sessions keep the snark and also get the import option.
+6. **Swipe-to-cancel upcoming sessions** (home list, trailing swipe) with a
+   confirmation: "Are you sure? … goes quietly — but you know the Monkeys are
+   still watching. They saw you plan it." / "It was created by mistake —
+   delete it" (destructive) / "Keep the plan". Deletes videos + notifications
+   + record.
+7. **Plan editor buttons moved to the bottom** (owner preference): prominent
+   "Save the plan" + bordered "Cancel" at the end of the form; top-bar
+   Save/Cancel removed.
+
+**Status:** PENDING
+
 ### 2026-07-16 · Longest clean streak (iOS `c290c7a`)
 
 **What:** "Longest clean streak" surfaced in two places:

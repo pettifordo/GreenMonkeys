@@ -2,21 +2,15 @@ import SwiftUI
 import SwiftData
 import Charts
 
-/// One judged night, flattened for charting.
-private struct NightPoint: Identifiable {
-    var id: Date { date }
-    let date: Date
-    let score: Int
-    let crimes: Int
-    let brokenPromises: Int
-}
-
 /// The pattern: the composite idiot score, repeat-offender promises, the
 /// booze-crime tallies, and the full record.
 struct HistoryView: View {
     @Query(sort: \SessionPlan.sessionStart, order: .reverse) private var plans: [SessionPlan]
 
     @AppStorage(SettingsKey.insultWord) private var insultWord = "idiot"
+    @AppStorage(SettingsKey.seedLongestStreak) private var seedLongestStreak = 0
+
+    @State private var period: ChartPeriod = .night
 
     private var judged: [SessionPlan] {
         plans.filter { $0.verdict != nil }
@@ -35,23 +29,61 @@ struct HistoryView: View {
     }
 
     private var longestStreak: Int {
-        StreakService.longestStreak(
-            idiotDates: plans.filter { ($0.verdict?.effectiveScore ?? 0) > 0 }.map(\.sessionStart),
-            firstUseDate: AppSettings.firstUseDate
+        max(
+            StreakService.longestStreak(
+                idiotDates: plans.filter { ($0.verdict?.effectiveScore ?? 0) > 0 }.map(\.sessionStart),
+                firstUseDate: AppSettings.firstUseDate
+            ),
+            seedLongestStreak
         )
     }
 
-    private var nightPoints: [NightPoint] {
-        judged
-            .sorted { $0.sessionStart < $1.sessionStart }
-            .map { plan in
-                NightPoint(
-                    date: plan.sessionStart,
-                    score: plan.verdict?.effectiveScore ?? 0,
-                    crimes: plan.verdict?.crimes.count ?? 0,
-                    brokenPromises: plan.commitments.filter { $0.wasBroken == true }.count
-                )
-            }
+    private var nightRecords: [NightRecord] {
+        judged.map { plan in
+            NightRecord(
+                date: plan.sessionStart,
+                score: plan.verdict?.effectiveScore ?? 0,
+                crimes: plan.verdict?.crimes.count ?? 0,
+                brokenPromises: plan.commitments.filter { $0.wasBroken == true }.count
+            )
+        }
+    }
+
+    private var periodPoints: [PeriodPoint] {
+        PatternService.aggregate(nightRecords, by: period)
+    }
+
+    private var trendLine: TrendLine? {
+        PatternService.trend(
+            dates: periodPoints.map(\.periodStart),
+            values: periodPoints.map(\.averageScore)
+        )
+    }
+
+    /// Two points for the dashed forecast: fitted value at the last bucket,
+    /// projected value one horizon ahead.
+    private var forecastPoints: [(date: Date, value: Double)] {
+        guard let trendLine, let last = periodPoints.last?.periodStart else { return [] }
+        let horizon: DateComponents
+        switch period {
+        case .night: horizon = DateComponents(day: 7)
+        case .week:  horizon = DateComponents(weekOfYear: 2)
+        case .month: horizon = DateComponents(month: 2)
+        case .year:  horizon = DateComponents(year: 1)
+        }
+        guard let future = Calendar.current.date(byAdding: horizon, to: last) else { return [] }
+        return [(last, trendLine.value(at: last)), (future, trendLine.value(at: future))]
+    }
+
+    private var forecastCommentary: String? {
+        guard let trendLine else { return nil }
+        if trendLine.slope < -0.005 {
+            return "Forecast: improving. The Monkeys are cautiously proud."
+        }
+        if trendLine.slope > 0.005 {
+            return "Forecast: heading the wrong way. The Monkeys are sharpening their pencils."
+        }
+        return "Forecast: flat. Consistency, of a sort."
     }
 
     var body: some View {
@@ -74,36 +106,41 @@ struct HistoryView: View {
                 }
             }
 
-            if nightPoints.count >= 2 {
+            if nightRecords.count >= 2 {
                 Section {
-                    Chart {
-                        ForEach(nightPoints) { point in
-                            if point.score == 0 {
-                                // A zero-height bar is invisible — clean nights get a green dot on the axis.
-                                PointMark(
-                                    x: .value("Night", point.date, unit: .day),
-                                    y: .value("Score", 0)
-                                )
-                                .foregroundStyle(.green)
-                                .symbolSize(110)
-                            } else {
-                                BarMark(
-                                    x: .value("Night", point.date, unit: .day),
-                                    y: .value("Score", point.score)
-                                )
-                                .foregroundStyle(scoreColor(point.score))
-                                .cornerRadius(3)
-                            }
+                    Picker("Summary", selection: $period) {
+                        ForEach(ChartPeriod.allCases) { option in
+                            Text(option.label).tag(option)
                         }
-                        if let average = PatternService.averageScore(scores: scores) {
-                            RuleMark(y: .value("Average", average))
-                                .lineStyle(StrokeStyle(lineWidth: 1, dash: [5, 4]))
-                                .foregroundStyle(.secondary)
-                                .annotation(position: .top, alignment: .trailing) {
-                                    Text("average \(average.formatted(.number.precision(.fractionLength(1))))")
-                                        .font(.caption2)
-                                        .foregroundStyle(.secondary)
-                                }
+                    }
+                    .pickerStyle(.segmented)
+
+                    Chart {
+                        ForEach(periodPoints) { point in
+                            LineMark(
+                                x: .value("When", point.periodStart, unit: period.chartUnit),
+                                y: .value("Score", point.averageScore),
+                                series: .value("Series", "Score")
+                            )
+                            .interpolationMethod(.catmullRom)
+                            .foregroundStyle(Color.red.opacity(0.7))
+                            .lineStyle(StrokeStyle(lineWidth: 2.5))
+
+                            PointMark(
+                                x: .value("When", point.periodStart, unit: period.chartUnit),
+                                y: .value("Score", point.averageScore)
+                            )
+                            .foregroundStyle(point.averageScore < 0.5 ? Color.green : scoreColor(Int(point.averageScore.rounded())))
+                            .symbolSize(70)
+                        }
+                        ForEach(Array(forecastPoints.enumerated()), id: \.offset) { _, forecast in
+                            LineMark(
+                                x: .value("When", forecast.date, unit: period.chartUnit),
+                                y: .value("Score", forecast.value),
+                                series: .value("Series", "Forecast")
+                            )
+                            .lineStyle(StrokeStyle(lineWidth: 1.5, dash: [5, 4]))
+                            .foregroundStyle(.secondary)
                         }
                     }
                     .chartYScale(domain: 0...5)
@@ -113,19 +150,20 @@ struct HistoryView: View {
                 } header: {
                     Text("\(insultWord.capitalized) score over time")
                 } footer: {
-                    Text("Green nights keep the streak. The dotted line is who you are on average — aim under it.")
+                    Text("Green dots are clean \(period == .night ? "nights" : period.label.lowercased() + "s"); lower is better."
+                         + (forecastCommentary.map { " Dashed line — \($0)" } ?? ""))
                 }
 
                 Section {
-                    Chart(nightPoints) { point in
+                    Chart(periodPoints) { point in
                         BarMark(
-                            x: .value("Night", point.date, unit: .day),
+                            x: .value("When", point.periodStart, unit: period.chartUnit),
                             y: .value("Count", point.crimes)
                         )
                         .foregroundStyle(by: .value("Type", "Booze crimes"))
                         .cornerRadius(3)
                         BarMark(
-                            x: .value("Night", point.date, unit: .day),
+                            x: .value("When", point.periodStart, unit: period.chartUnit),
                             y: .value("Count", point.brokenPromises)
                         )
                         .foregroundStyle(by: .value("Type", "Broken promises"))
@@ -138,7 +176,7 @@ struct HistoryView: View {
                     .frame(height: 170)
                     .padding(.vertical, 4)
                 } header: {
-                    Text("Misdeeds per night")
+                    Text("Misdeeds per \(period.label.lowercased())")
                 } footer: {
                     Text("Crimes confessed plus promises broken, stacked. Flat is the goal; the Monkeys prefer drama.")
                 }

@@ -10,6 +10,7 @@ enum SettingsKey {
     static let morningAfterHour = "morningAfterHour"
     static let appLockEnabled = "appLockEnabled"
     static let firstUseDate = "firstUseDate"
+    static let seedLongestStreak = "seedLongestStreak"
 }
 
 enum AppSettings {
@@ -20,7 +21,7 @@ enum AppSettings {
         UserDefaults.standard.string(forKey: SettingsKey.insultWord) ?? "idiot"
     }
 
-    static let sessionNounPresets = ["Session", "Night Out", "Drink", "Cheeky One"]
+    static let sessionNounPresets = ["Session", "Night Out", "Drink", "Cheeky One", "Risk Event"]
 
     /// What the user calls a drinking occasion — drives the + button, empty
     /// states, and titles ("Plan a Night Out", "No Cheeky One planned").
@@ -40,6 +41,12 @@ enum AppSettings {
     static var appLockEnabled: Bool {
         // Default ON: this app holds videos of you drunk (SPEC §5).
         UserDefaults.standard.object(forKey: SettingsKey.appLockEnabled) as? Bool ?? true
+    }
+
+    /// A pre-app personal record, self-declared in Settings — the challenge to
+    /// beat. The app's own history can only start from install day.
+    static var seedLongestStreak: Int {
+        max(0, UserDefaults.standard.integer(forKey: SettingsKey.seedLongestStreak))
     }
 
     /// Anchor for the streak before any idiot verdict exists. Set once on first launch.

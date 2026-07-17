@@ -116,22 +116,37 @@ struct PlanEditorView: View {
             } footer: {
                 Text("30 seconds of sober you saying exactly what the plan is. Tomorrow-you will thank you. Or wince.")
             }
-        }
-        .navigationTitle("New \(AppSettings.sessionNoun)")
-        .toolbar {
-            ToolbarItem(placement: .cancellationAction) {
-                Button("Cancel") {
+
+            // Confirm actions live at the bottom, like everywhere else in the app.
+            Section {
+                Button {
+                    save()
+                } label: {
+                    Text("Save the plan")
+                        .font(.headline)
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.borderedProminent)
+                .disabled(drafts.isEmpty)
+                .listRowBackground(Color.clear)
+                .listRowInsets(EdgeInsets())
+
+                Button {
                     if let fileName = planVideoFileName {
                         VideoStore.shared.delete(fileName: fileName)
                     }
                     dismiss()
+                } label: {
+                    Text("Cancel")
+                        .frame(maxWidth: .infinity)
                 }
-            }
-            ToolbarItem(placement: .confirmationAction) {
-                Button("Save") { save() }
-                    .disabled(drafts.isEmpty)
+                .buttonStyle(.bordered)
+                .listRowBackground(Color.clear)
+                .listRowInsets(EdgeInsets())
+                .padding(.top, 4)
             }
         }
+        .navigationTitle("New \(AppSettings.sessionNoun)")
         .fullScreenCover(isPresented: $showingCamera) {
             CameraRecorderView { url in
                 if let old = planVideoFileName {

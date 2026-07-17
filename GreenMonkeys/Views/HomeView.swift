@@ -38,6 +38,9 @@ struct HomeView: View {
     // @AppStorage so the home screen updates the moment Settings changes them.
     @AppStorage(SettingsKey.insultWord) private var insultWord = "idiot"
     @AppStorage(SettingsKey.sessionNoun) private var sessionNoun = "Session"
+    @AppStorage(SettingsKey.seedLongestStreak) private var seedLongestStreak = 0
+
+    @State private var planToCancel: SessionPlan?
 
     private var hasIdiotHistory: Bool {
         plans.contains { ($0.verdict?.effectiveScore ?? 0) > 0 }
@@ -50,6 +53,16 @@ struct HomeView: View {
         return StreakService.daysSince(
             lastIdiotDate: StreakService.lastIdiotDate(idiotVerdictSessionStarts: idiotDates),
             firstUseDate: AppSettings.firstUseDate
+        )
+    }
+
+    private var longestStreak: Int {
+        max(
+            StreakService.longestStreak(
+                idiotDates: plans.filter { ($0.verdict?.effectiveScore ?? 0) > 0 }.map(\.sessionStart),
+                firstUseDate: AppSettings.firstUseDate
+            ),
+            seedLongestStreak
         )
     }
 
@@ -100,6 +113,13 @@ struct HomeView: View {
                     ForEach(upcoming) { plan in
                         NavigationLink(value: plan) {
                             PlanRow(plan: plan, badge: nil)
+                        }
+                        .swipeActions(edge: .trailing) {
+                            Button(role: .destructive) {
+                                planToCancel = plan
+                            } label: {
+                                Label("Cancel", systemImage: "xmark.bin")
+                            }
                         }
                     }
                 }
@@ -154,6 +174,22 @@ struct HomeView: View {
             .sheet(isPresented: $showingEditor) {
                 NavigationStack { PlanEditorView() }
             }
+            .confirmationDialog(
+                "Cancel this \(sessionNoun)?",
+                isPresented: Binding(
+                    get: { planToCancel != nil },
+                    set: { if !$0 { planToCancel = nil } }
+                ),
+                titleVisibility: .visible,
+                presenting: planToCancel
+            ) { plan in
+                Button("It was created by mistake — delete it", role: .destructive) {
+                    cancelPlan(plan)
+                }
+                Button("Keep the plan", role: .cancel) {}
+            } message: { plan in
+                Text("Are you sure? \"\(plan.occasion.isEmpty ? "This one" : plan.occasion)\" goes quietly — but you know the Monkeys are still watching. They saw you plan it.")
+            }
             .onAppear {
                 pushWatchContext()
                 pushStreakSnapshot()
@@ -202,6 +238,11 @@ struct HomeView: View {
                         .foregroundStyle(streakDays == 0 && hasIdiotHistory ? .red : .green)
                     Text(streakTagline)
                         .font(.footnote)
+                        .foregroundStyle(.secondary)
+                    Text(streakDays >= longestStreak && streakDays > 0
+                         ? "🏆 Personal best — beat yesterday's you again tomorrow"
+                         : "Longest streak: \(longestStreak) days")
+                        .font(.caption)
                         .foregroundStyle(.secondary)
                 }
                 .frame(maxWidth: .infinity)
@@ -272,9 +313,19 @@ struct HomeView: View {
             hasIdiotHistory: !idiotDates.isEmpty,
             firstUseDate: AppSettings.firstUseDate,
             insultWord: insultWord,
-            longestStreak: StreakService.longestStreak(idiotDates: idiotDates, firstUseDate: AppSettings.firstUseDate)
+            longestStreak: longestStreak
         ).save()
         WidgetCenter.shared.reloadAllTimelines()
+    }
+
+    private func cancelPlan(_ plan: SessionPlan) {
+        for video in plan.videos {
+            VideoStore.shared.delete(fileName: video.fileName)
+        }
+        let planID = plan.id
+        Task { await NotificationService.shared.cancel(planID: planID) }
+        modelContext.delete(plan)
+        try? modelContext.save()
     }
 }
 
