@@ -88,6 +88,13 @@ struct HomeView: View {
                         NavigationLink(value: plan) {
                             PlanRow(plan: plan, badge: "🍻 Live")
                         }
+                        .swipeActions(edge: .trailing) {
+                            Button(role: .destructive) {
+                                planToCancel = plan
+                            } label: {
+                                Label("Cancel", systemImage: "xmark.bin")
+                            }
+                        }
                     }
                 }
 
@@ -96,6 +103,13 @@ struct HomeView: View {
                         ForEach(awaitingVerdict) { plan in
                             NavigationLink(value: plan) {
                                 PlanRow(plan: plan, badge: "🫣 Debrief due")
+                            }
+                            .swipeActions(edge: .trailing) {
+                                Button(role: .destructive) {
+                                    planToCancel = plan
+                                } label: {
+                                    Label("Delete", systemImage: "xmark.bin")
+                                }
                             }
                         }
                     }
@@ -175,7 +189,7 @@ struct HomeView: View {
                 NavigationStack { PlanEditorView() }
             }
             .confirmationDialog(
-                "Cancel this \(sessionNoun)?",
+                planToCancel?.status() == .planned ? "Cancel this \(sessionNoun)?" : "Delete this \(sessionNoun)?",
                 isPresented: Binding(
                     get: { planToCancel != nil },
                     set: { if !$0 { planToCancel = nil } }
@@ -183,12 +197,22 @@ struct HomeView: View {
                 titleVisibility: .visible,
                 presenting: planToCancel
             ) { plan in
-                Button("It was created by mistake — delete it", role: .destructive) {
+                Button(
+                    plan.status() == .planned
+                        ? "It was created by mistake — delete it"
+                        : "Delete it — evidence and all",
+                    role: .destructive
+                ) {
                     cancelPlan(plan)
                 }
-                Button("Keep the plan", role: .cancel) {}
+                Button("Keep it", role: .cancel) {}
             } message: { plan in
-                Text("Are you sure? \"\(plan.occasion.isEmpty ? "This one" : plan.occasion)\" goes quietly — but you know the Monkeys are still watching. They saw you plan it.")
+                let name = plan.occasion.isEmpty ? "This one" : "\"\(plan.occasion)\""
+                if plan.status() == .planned {
+                    Text("Are you sure? \(name) goes quietly — but you know the Monkeys are still watching. They saw you plan it.")
+                } else {
+                    Text("Are you sure? Was it created by mistake, or did it just go badly? \(name) and its videos vanish — but the Monkeys are still watching, and deleting it won't delete the memory of it.")
+                }
             }
             .onAppear {
                 pushWatchContext()
