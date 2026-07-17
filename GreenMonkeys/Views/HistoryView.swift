@@ -123,14 +123,14 @@ struct HistoryView: View {
                                 series: .value("Series", "Score")
                             )
                             .interpolationMethod(.catmullRom)
-                            .foregroundStyle(Color.red.opacity(0.7))
+                            .foregroundStyle(.blue)
                             .lineStyle(StrokeStyle(lineWidth: 2.5))
 
                             PointMark(
                                 x: .value("When", point.periodStart, unit: period.chartUnit),
                                 y: .value("Score", point.averageScore)
                             )
-                            .foregroundStyle(point.averageScore < 0.5 ? Color.green : scoreColor(Int(point.averageScore.rounded())))
+                            .foregroundStyle(.blue)
                             .symbolSize(70)
                         }
                         ForEach(Array(forecastPoints.enumerated()), id: \.offset) { _, forecast in
@@ -150,7 +150,7 @@ struct HistoryView: View {
                 } header: {
                     Text("\(insultWord.capitalized) score over time")
                 } footer: {
-                    Text("Green dots are clean \(period == .night ? "nights" : period.label.lowercased() + "s"); lower is better."
+                    Text("Lower is better; zero means you behaved."
                          + (forecastCommentary.map { " Dashed line — \($0)" } ?? ""))
                 }
 

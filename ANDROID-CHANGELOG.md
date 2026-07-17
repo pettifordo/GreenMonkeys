@@ -34,9 +34,11 @@ build 1 — bump Android versionName to 1.1 when ported.
 3. **"Risk Event" added to the session-noun presets** (after Cheeky One).
 4. **Pattern charts reworked** (owner feedback: green dot was unclear, average
    RuleMark collided with bars):
-   - Score chart is now a **curvy line** (Catmull-Rom) with points coloured by
-     severity (green when average < 0.5) — zero nights are naturally on the
-     line, no dot hack; average rule REMOVED.
+   - Score chart is now a **curvy line** (Catmull-Rom), plain BLUE line and
+     points — no severity/green colour-coding (owner reviewed on device: the
+     green dot was unexplained and red read as scolding). Zero nights are
+     naturally visible at y=0; footer: "Lower is better; zero means you
+     behaved." Average rule REMOVED.
    - **Trend forecast**: least-squares fit over the plotted points (≥ 3 points
      required — "predicting from two nights is astrology"), drawn as a dashed
      secondary line from the last bucket to one horizon ahead (night→+7 d,
