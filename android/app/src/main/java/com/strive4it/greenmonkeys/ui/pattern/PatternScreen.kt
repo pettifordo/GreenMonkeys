@@ -14,6 +14,9 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SegmentedButton
+import androidx.compose.material3.SegmentedButtonDefaults
+import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -38,38 +41,69 @@ import androidx.lifecycle.viewmodel.viewModelFactory
 import com.strive4it.greenmonkeys.GreenMonkeysApp
 import com.strive4it.greenmonkeys.data.PlanRepository
 import com.strive4it.greenmonkeys.data.PlanWithDetails
+import com.strive4it.greenmonkeys.logic.ChartPeriod
 import com.strive4it.greenmonkeys.logic.CommitmentRecord
 import com.strive4it.greenmonkeys.logic.CrimeCount
+import com.strive4it.greenmonkeys.logic.NightRecord
 import com.strive4it.greenmonkeys.logic.PatternService
+import com.strive4it.greenmonkeys.logic.PeriodPoint
 import com.strive4it.greenmonkeys.logic.PromiseHistory
+import com.strive4it.greenmonkeys.logic.StreakService
+import com.strive4it.greenmonkeys.logic.TrendLine
 import com.strive4it.greenmonkeys.settings.SettingsRepository
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import java.time.Instant
+import java.time.Period
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.Locale
-
-/** One judged night, flattened for charting. */
-data class NightPoint(
-    val date: Instant,
-    val score: Int,
-    val crimes: Int,
-    val brokenPromises: Int,
-)
 
 data class PatternUiState(
     val insultWord: String = "idiot",
     val judged: List<PlanWithDetails> = emptyList(),
     val scores: List<Int> = emptyList(),
-    val nightPoints: List<NightPoint> = emptyList(),
+    val longestStreak: Int = 0,
+    val period: ChartPeriod = ChartPeriod.NIGHT,
+    val periodPoints: List<PeriodPoint> = emptyList(),
+    val trendLine: TrendLine? = null,
     val repeatOffenders: List<PromiseHistory> = emptyList(),
     val crimeCounts: List<CrimeCount> = emptyList(),
 ) {
     val idiotRate: Double? get() = PatternService.idiotRate(scores)
     val averageScore: Double? get() = PatternService.averageScore(scores)
+
+    /**
+     * Two points for the dashed forecast: fitted value at the last bucket,
+     * projected value one horizon ahead (iOS 1.1 parity).
+     */
+    val forecastPoints: List<Pair<Instant, Double>>
+        get() {
+            val trend = trendLine ?: return emptyList()
+            val last = periodPoints.lastOrNull()?.periodStart ?: return emptyList()
+            val zone = ZoneId.systemDefault()
+            val horizon = when (period) {
+                ChartPeriod.NIGHT -> Period.ofDays(7)
+                ChartPeriod.WEEK -> Period.ofWeeks(2)
+                ChartPeriod.MONTH -> Period.ofMonths(2)
+                ChartPeriod.YEAR -> Period.ofYears(1)
+            }
+            val future = last.atZone(zone).plus(horizon).toInstant()
+            return listOf(last to trend.valueAt(last), future to trend.valueAt(future))
+        }
+
+    val forecastCommentary: String?
+        get() {
+            val trend = trendLine ?: return null
+            return when {
+                trend.slope < -0.005 -> "Forecast: improving. The Monkeys are cautiously proud."
+                trend.slope > 0.005 -> "Forecast: heading the wrong way. The Monkeys are sharpening their pencils."
+                else -> "Forecast: flat. Consistency, of a sort."
+            }
+        }
 }
 
 class PatternViewModel(
@@ -77,32 +111,52 @@ class PatternViewModel(
     settings: SettingsRepository,
 ) : ViewModel() {
 
+    private val period = MutableStateFlow(ChartPeriod.NIGHT)
+
     val uiState: StateFlow<PatternUiState> = combine(
         repository.observePlans(),
         settings.insultWord,
-    ) { plans, word ->
+        settings.seedLongestStreak,
+        period,
+    ) { plans, word, seed, chartPeriod ->
         val judged = plans.filter { it.verdict != null }
         val records = judged.flatMap { it.commitments }.mapNotNull { c ->
             c.wasBroken?.let { CommitmentRecord(c.patternKey, c.patternLabel, it) }
         }
+        val idiotDates = plans
+            .filter { (it.verdict?.effectiveScore ?: 0) > 0 }
+            .map { it.plan.sessionStart }
+        val nightRecords = judged.map { plan ->
+            NightRecord(
+                date = plan.plan.sessionStart,
+                score = plan.verdict?.effectiveScore ?: 0,
+                crimes = plan.verdict?.crimes?.size ?: 0,
+                brokenPromises = plan.commitments.count { it.wasBroken == true },
+            )
+        }
+        val points = PatternService.aggregate(nightRecords, chartPeriod)
         PatternUiState(
             insultWord = word,
             judged = judged.sortedByDescending { it.plan.sessionStart },
             scores = judged.mapNotNull { it.verdict?.effectiveScore },
-            nightPoints = judged
-                .sortedBy { it.plan.sessionStart }
-                .map { plan ->
-                    NightPoint(
-                        date = plan.plan.sessionStart,
-                        score = plan.verdict?.effectiveScore ?: 0,
-                        crimes = plan.verdict?.crimes?.size ?: 0,
-                        brokenPromises = plan.commitments.count { it.wasBroken == true },
-                    )
-                },
+            longestStreak = maxOf(
+                StreakService.longestStreak(idiotDates, settings.firstUseDate()),
+                seed,
+            ),
+            period = chartPeriod,
+            periodPoints = points,
+            trendLine = PatternService.trend(
+                points.map { it.periodStart },
+                points.map { it.averageScore },
+            ),
             repeatOffenders = PatternService.repeatOffenders(records),
             crimeCounts = PatternService.crimeCounts(judged.mapNotNull { it.verdict?.crimes }),
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), PatternUiState())
+
+    fun setPeriod(value: ChartPeriod) {
+        period.value = value
+    }
 
     companion object {
         val Factory: ViewModelProvider.Factory = viewModelFactory {
@@ -114,7 +168,7 @@ class PatternViewModel(
     }
 }
 
-/** The pattern: score stats, two charts, repeat offenders, lifetime charge sheet, the record. */
+/** The pattern: score stats, two charts with period buckets + forecast, the record. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PatternScreen(
@@ -160,18 +214,35 @@ fun PatternScreen(
                 state.scores.maxOrNull()?.let { worst ->
                     item { StatRow("Personal best (worst)", "$worst / 5") }
                 }
+                item { StatRow("Longest clean streak", "${state.longestStreak} days") }
             }
 
-            if (state.nightPoints.size >= 2) {
+            if (state.judged.size >= 2) {
+                item {
+                    SingleChoiceSegmentedButtonRow(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 14.dp),
+                    ) {
+                        ChartPeriod.entries.forEachIndexed { index, option ->
+                            SegmentedButton(
+                                selected = state.period == option,
+                                onClick = { viewModel.setPeriod(option) },
+                                shape = SegmentedButtonDefaults.itemShape(index, ChartPeriod.entries.size),
+                            ) { Text(option.label) }
+                        }
+                    }
+                }
+
                 item {
                     SectionHeader(
                         "${state.insultWord.replaceFirstChar { it.uppercase() }} score over time"
                     )
                 }
                 item {
-                    ScoreChart(
-                        points = state.nightPoints,
-                        average = state.averageScore,
+                    ScoreLineChart(
+                        points = state.periodPoints,
+                        forecast = state.forecastPoints,
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(190.dp)
@@ -179,13 +250,16 @@ fun PatternScreen(
                     )
                 }
                 item {
-                    Footer("Green nights keep the streak. The dashed line is who you are on average — aim under it.")
+                    Footer(
+                        "Lower is better; zero means you behaved." +
+                            (state.forecastCommentary?.let { " Dashed line — $it" } ?: "")
+                    )
                 }
 
-                item { SectionHeader("Misdeeds per night") }
+                item { SectionHeader("Misdeeds per ${state.period.label.lowercase()}") }
                 item {
                     MisdeedsChart(
-                        points = state.nightPoints,
+                        points = state.periodPoints,
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(170.dp)
@@ -272,64 +346,67 @@ fun PatternScreen(
 private const val MAX_SCORE = 5f
 
 /**
- * Score-over-time: date-positioned bars (gaps meaningful), y locked 0–5,
- * clean nights drawn as green dots on the axis, dashed lifetime average.
+ * Score-over-time (iOS 1.1 rework): plain blue line through period averages
+ * with point marks, plus the dashed least-squares forecast. Y locked 0–5,
+ * date-based x-axis so gaps stay meaningful.
  */
 @Composable
-private fun ScoreChart(points: List<NightPoint>, average: Double?, modifier: Modifier = Modifier) {
+private fun ScoreLineChart(
+    points: List<PeriodPoint>,
+    forecast: List<Pair<Instant, Double>>,
+    modifier: Modifier = Modifier,
+) {
     val axisColor = MaterialTheme.colorScheme.onSurfaceVariant
+    val lineColor = Color(0xFF1E88E5)
     Canvas(modifier = modifier) {
-        val minT = points.first().date.epochSecond.toFloat()
-        val maxT = points.last().date.epochSecond.toFloat()
+        if (points.isEmpty()) return@Canvas
+        val minT = points.first().periodStart.epochSecond.toFloat()
+        val maxT = maxOf(
+            points.last().periodStart.epochSecond.toFloat(),
+            forecast.lastOrNull()?.first?.epochSecond?.toFloat() ?: Float.MIN_VALUE,
+        )
         val span = (maxT - minT).coerceAtLeast(1f)
-        val barWidth = (size.width / (points.size * 2.5f)).coerceAtMost(28.dp.toPx())
-        fun x(point: NightPoint): Float =
-            barWidth / 2 + (point.date.epochSecond - minT) / span * (size.width - barWidth)
-        fun y(value: Float): Float = size.height - value / MAX_SCORE * size.height
+        val inset = 8.dp.toPx()
+        fun x(date: Instant): Float =
+            inset + (date.epochSecond - minT) / span * (size.width - 2 * inset)
+        fun y(value: Double): Float =
+            size.height - (value.toFloat() / MAX_SCORE) * size.height
 
-        // Axis
         drawLine(axisColor, Offset(0f, size.height), Offset(size.width, size.height), 2f)
 
-        for (point in points) {
-            if (point.score == 0) {
-                // A zero-height bar is invisible — clean nights get a green dot on the axis.
-                drawCircle(Color(0xFF4CAF50), radius = 6.dp.toPx(), center = Offset(x(point), size.height))
-            } else {
-                val alpha = (0.35f + point.score * 0.13f).coerceAtMost(1f)
-                drawRoundRect(
-                    color = Color.Red.copy(alpha = alpha),
-                    topLeft = Offset(x(point) - barWidth / 2, y(point.score.toFloat())),
-                    size = Size(barWidth, size.height - y(point.score.toFloat())),
-                    cornerRadius = CornerRadius(3.dp.toPx()),
-                )
-            }
+        val positions = points.map { Offset(x(it.periodStart), y(it.averageScore)) }
+        for ((from, to) in positions.zipWithNext()) {
+            drawLine(lineColor, from, to, strokeWidth = 2.5.dp.toPx())
+        }
+        for (position in positions) {
+            drawCircle(lineColor, radius = 4.5.dp.toPx(), center = position)
         }
 
-        average?.let {
-            val avgY = y(it.toFloat())
+        if (forecast.size == 2) {
             drawLine(
                 axisColor,
-                Offset(0f, avgY),
-                Offset(size.width, avgY),
-                strokeWidth = 2f,
+                Offset(x(forecast[0].first), y(forecast[0].second)),
+                Offset(x(forecast[1].first), y(forecast[1].second)),
+                strokeWidth = 1.5.dp.toPx(),
                 pathEffect = PathEffect.dashPathEffect(floatArrayOf(12f, 10f)),
             )
         }
     }
 }
 
-/** Misdeeds per night: crimes + broken promises, stacked. */
+/** Misdeeds per period: crimes + broken promises, stacked. */
 @Composable
-private fun MisdeedsChart(points: List<NightPoint>, modifier: Modifier = Modifier) {
+private fun MisdeedsChart(points: List<PeriodPoint>, modifier: Modifier = Modifier) {
     val axisColor = MaterialTheme.colorScheme.onSurfaceVariant
     Canvas(modifier = modifier) {
+        if (points.isEmpty()) return@Canvas
         val maxCount = points.maxOf { it.crimes + it.brokenPromises }.coerceAtLeast(1).toFloat()
-        val minT = points.first().date.epochSecond.toFloat()
-        val maxT = points.last().date.epochSecond.toFloat()
+        val minT = points.first().periodStart.epochSecond.toFloat()
+        val maxT = points.last().periodStart.epochSecond.toFloat()
         val span = (maxT - minT).coerceAtLeast(1f)
         val barWidth = (size.width / (points.size * 2.5f)).coerceAtMost(28.dp.toPx())
-        fun x(point: NightPoint): Float =
-            barWidth / 2 + (point.date.epochSecond - minT) / span * (size.width - barWidth)
+        fun x(point: PeriodPoint): Float =
+            barWidth / 2 + (point.periodStart.epochSecond - minT) / span * (size.width - barWidth)
 
         drawLine(axisColor, Offset(0f, size.height), Offset(size.width, size.height), 2f)
 

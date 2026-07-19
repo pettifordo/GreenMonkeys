@@ -37,6 +37,8 @@ class StreakWidget : GlanceAppWidget() {
             GlanceTheme {
                 val days = snapshot.days()
                 val red = days == 0 && snapshot.hasIdiotHistory
+                // The current run can overtake the stored best between app opens.
+                val longest = maxOf(snapshot.longestStreak, days)
                 Column(
                     modifier = GlanceModifier
                         .fillMaxSize()
@@ -63,6 +65,13 @@ class StreakWidget : GlanceAppWidget() {
                             else ColorProvider(Color(0xFF4CAF50)),
                         ),
                     )
+                    if (longest > 0) {
+                        Text(
+                            if (days >= longest && days > 0) "🏆 Personal best"
+                            else "Longest: $longest days",
+                            style = TextStyle(fontSize = 11.sp, color = GlanceTheme.colors.onSurface),
+                        )
+                    }
                 }
             }
         }
@@ -75,13 +84,18 @@ class StreakWidget : GlanceAppWidget() {
             val idiotDates = plans
                 .filter { (it.verdict?.effectiveScore ?: 0) > 0 }
                 .map { it.plan.sessionStart }
+            val firstUse = settings.firstUseDate()
             StreakSnapshotStore.save(
                 context,
                 StreakSnapshot(
                     anchorDate = StreakService.lastIdiotDate(idiotDates),
                     hasIdiotHistory = idiotDates.isNotEmpty(),
-                    firstUseDate = settings.firstUseDate(),
+                    firstUseDate = firstUse,
                     insultWord = settings.insultWord.first(),
+                    longestStreak = maxOf(
+                        StreakService.longestStreak(idiotDates, firstUse),
+                        settings.seedLongestStreak.first(),
+                    ),
                 ),
             )
             StreakWidget().updateAll(context)

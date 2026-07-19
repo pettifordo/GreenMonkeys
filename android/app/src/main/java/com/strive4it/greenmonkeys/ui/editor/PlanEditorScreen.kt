@@ -70,7 +70,12 @@ fun PlanEditorScreen(
         topBar = {
             TopAppBar(
                 title = { Text("New ${state.sessionNoun}") },
-                navigationIcon = { TextButton(onClick = onDone) { Text("Cancel") } },
+                navigationIcon = {
+                    TextButton(onClick = {
+                        viewModel.discardUnsavedVideo()
+                        onDone()
+                    }) { Text("Cancel") }
+                },
                 actions = {
                     TextButton(onClick = viewModel::save, enabled = state.canSave) { Text("Save") }
                 },

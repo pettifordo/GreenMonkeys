@@ -21,11 +21,14 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.FragmentActivity
+import androidx.lifecycle.lifecycleScope
 import androidx.navigation.compose.rememberNavController
+import com.strive4it.greenmonkeys.debug.DemoSeeder
 import com.strive4it.greenmonkeys.ui.AppNavHost
 import com.strive4it.greenmonkeys.ui.lock.LockScreen
 import com.strive4it.greenmonkeys.ui.theme.GreenMonkeysTheme
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 
 // FragmentActivity, not ComponentActivity: BiometricPrompt requires it.
 class MainActivity : FragmentActivity() {
@@ -36,8 +39,8 @@ class MainActivity : FragmentActivity() {
         const val ROUTE_RECORD = "record"
     }
 
-    /** A notification tap waiting for the nav graph to consume it. */
-    data class PendingRoute(val planId: String, val route: String)
+    /** A notification tap (or debug-rig launch) waiting for the nav graph to consume it. */
+    data class PendingRoute(val planId: String?, val route: String)
 
     private var pendingRoute by mutableStateOf<PendingRoute?>(null)
 
@@ -102,7 +105,24 @@ class MainActivity : FragmentActivity() {
     }
 
     private fun consumeIntent(intent: Intent?) {
-        val planId = intent?.getStringExtra(EXTRA_PLAN_ID) ?: return
+        if (intent == null) return
+
+        // Debug-only demo/screenshot rig, mirroring iOS ScreenshotRig.
+        if (BuildConfig.DEBUG && intent.getBooleanExtra("demoData", false)) {
+            val screen = intent.getStringExtra("screen")
+            lifecycleScope.launch {
+                val app = application as GreenMonkeysApp
+                DemoSeeder.seedIfEmpty(app)
+                if (screen != null) {
+                    DemoSeeder.routeFor(screen, app)?.let { (planId, route) ->
+                        pendingRoute = PendingRoute(planId, route)
+                    }
+                }
+            }
+            return
+        }
+
+        val planId = intent.getStringExtra(EXTRA_PLAN_ID) ?: return
         val route = intent.getStringExtra(EXTRA_ROUTE) ?: return
         pendingRoute = PendingRoute(planId, route)
     }

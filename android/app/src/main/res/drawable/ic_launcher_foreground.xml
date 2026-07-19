@@ -1,0 +1,100 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The guilty green monkey with the slipping halo, translated from the same
+     geometry as Tools/draw_icon.swift (1024px master). Scaled to sit inside
+     the adaptive-icon safe zone. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="1024"
+    android:viewportHeight="1024">
+    <group
+        android:scaleX="0.6"
+        android:scaleY="0.6"
+        android:pivotX="512"
+        android:pivotY="512">
+
+        <!-- Spotlight glow -->
+        <path
+            android:fillColor="#12FFFFFF"
+            android:pathData="M112,460a400,400 0 1,0 800,0a400,400 0 1,0 -800,0" />
+
+        <!-- Ears -->
+        <path
+            android:fillColor="#3E9B4F"
+            android:pathData="M140,470a112,112 0 1,0 224,0a112,112 0 1,0 -224,0" />
+        <path
+            android:fillColor="#A9E2A0"
+            android:pathData="M194,470a58,58 0 1,0 116,0a58,58 0 1,0 -116,0" />
+        <path
+            android:fillColor="#3E9B4F"
+            android:pathData="M660,470a112,112 0 1,0 224,0a112,112 0 1,0 -224,0" />
+        <path
+            android:fillColor="#A9E2A0"
+            android:pathData="M714,470a58,58 0 1,0 116,0a58,58 0 1,0 -116,0" />
+
+        <!-- Head -->
+        <path
+            android:fillColor="#3E9B4F"
+            android:pathData="M212,520a300,285 0 1,0 600,0a300,285 0 1,0 -600,0" />
+
+        <!-- Face patches -->
+        <path
+            android:fillColor="#A9E2A0"
+            android:pathData="M307,470a108,108 0 1,0 216,0a108,108 0 1,0 -216,0" />
+        <path
+            android:fillColor="#A9E2A0"
+            android:pathData="M501,470a108,108 0 1,0 216,0a108,108 0 1,0 -216,0" />
+        <path
+            android:fillColor="#A9E2A0"
+            android:pathData="M297,615a215,165 0 1,0 430,0a215,165 0 1,0 -430,0" />
+
+        <!-- Left eye: open, guilty sideways glance -->
+        <path
+            android:fillColor="#FFFFFF"
+            android:pathData="M353,478a62,68 0 1,0 124,0a62,68 0 1,0 -124,0" />
+        <path
+            android:fillColor="#14100C"
+            android:pathData="M405,497a29,29 0 1,0 58,0a29,29 0 1,0 -58,0" />
+        <path
+            android:fillColor="#FFFFFF"
+            android:pathData="M413,484a10,10 0 1,0 20,0a10,10 0 1,0 -20,0" />
+
+        <!-- Right eye: cheeky wink -->
+        <path
+            android:strokeColor="#14100C"
+            android:strokeWidth="18"
+            android:strokeLineCap="round"
+            android:pathData="M552,470Q609,524 666,470" />
+
+        <!-- Nostrils -->
+        <path
+            android:fillColor="#1E4D26"
+            android:pathData="M465,606a13,19 0 1,0 26,0a13,19 0 1,0 -26,0" />
+        <path
+            android:fillColor="#1E4D26"
+            android:pathData="M533,606a13,19 0 1,0 26,0a13,19 0 1,0 -26,0" />
+
+        <!-- Lopsided "who, me?" grin + smirk tick -->
+        <path
+            android:strokeColor="#1E4D26"
+            android:strokeWidth="18"
+            android:strokeLineCap="round"
+            android:pathData="M398,690Q522,768 644,672" />
+        <path
+            android:strokeColor="#1E4D26"
+            android:strokeWidth="18"
+            android:strokeLineCap="round"
+            android:pathData="M644,672Q666,664 668,640" />
+
+        <!-- The slipping halo — innocence, unconvincingly worn -->
+        <group
+            android:rotation="-11.5"
+            android:pivotX="648"
+            android:pivotY="178">
+            <path
+                android:strokeColor="#FFD54F"
+                android:strokeWidth="26"
+                android:pathData="M508,178a140,42 0 1,0 280,0a140,42 0 1,0 -280,0" />
+        </group>
+    </group>
+</vector>

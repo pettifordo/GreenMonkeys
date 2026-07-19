@@ -55,21 +55,26 @@ fun AppNavHost(
     pendingRoute: MainActivity.PendingRoute?,
     onPendingRouteConsumed: () -> Unit,
 ) {
-    // Notification taps land here: route once the graph is up.
+    // Notification taps and debug-rig launches land here: route once the graph is up.
     LaunchedEffect(pendingRoute) {
         val pending = pendingRoute ?: return@LaunchedEffect
+        val planId = pending.planId
         when (pending.route) {
-            NudgeRoutes.SESSION -> navController.navigate(Routes.session(pending.planId)) {
-                popUpTo(Routes.HOME)
+            NudgeRoutes.SESSION -> planId?.let {
+                navController.navigate(Routes.session(it)) { popUpTo(Routes.HOME) }
             }
-            NudgeRoutes.MORNING -> navController.navigate(Routes.morning(pending.planId)) {
-                popUpTo(Routes.HOME)
+            NudgeRoutes.MORNING -> planId?.let {
+                navController.navigate(Routes.morning(it)) { popUpTo(Routes.HOME) }
             }
-            NudgeRoutes.RECORD -> {
+            NudgeRoutes.RECORD -> planId?.let {
                 // Straight into the camera — drunk users don't navigate (brief §4).
-                navController.navigate(Routes.session(pending.planId)) { popUpTo(Routes.HOME) }
+                navController.navigate(Routes.session(it)) { popUpTo(Routes.HOME) }
                 navController.navigate(Routes.CAMERA)
             }
+            "verdict" -> planId?.let { navController.navigate(Routes.verdict(it)) }
+            "editor" -> navController.navigate(Routes.EDITOR)
+            "pattern" -> navController.navigate(Routes.PATTERN)
+            "settings" -> navController.navigate(Routes.SETTINGS)
         }
         onPendingRouteConsumed()
     }
@@ -106,6 +111,10 @@ fun AppNavHost(
                 planId = planId,
                 onDeleted = { navController.popBackStack(Routes.HOME, inclusive = false) },
                 onBack = { navController.popBackStack() },
+                onPlayVideo = { navController.navigate(Routes.player(it)) },
+                onReliveRoast = { navController.navigate(Routes.verdict(planId)) },
+                onOpenSession = { navController.navigate(Routes.session(planId)) },
+                onRecordOutcome = { navController.navigate(Routes.morning(planId)) },
             )
         }
 

@@ -41,4 +41,34 @@ object StreakService {
     /** The anchor date for the streak given all completed plans. */
     fun lastIdiotDate(idiotVerdictSessionStarts: List<Instant>): Instant? =
         idiotVerdictSessionStarts.maxOrNull()
+
+    /**
+     * The best clean run ever achieved, using the same day conventions as
+     * [daysSince]: install → first incident counts plainly; runs after an
+     * incident start from the day AFTER the hangover morning; the current
+     * run counts too (the record might be happening right now).
+     */
+    fun longestStreak(
+        idiotDates: List<Instant>,
+        firstUseDate: Instant,
+        now: Instant = Instant.now(),
+        zone: ZoneId = ZoneId.systemDefault(),
+    ): Int {
+        val incidentDays: List<LocalDate> =
+            idiotDates.map { it.atZone(zone).toLocalDate() }.distinct().sorted()
+        val firstIncident = incidentDays.firstOrNull()
+            ?: return daysSince(lastIdiotDate = null, firstUseDate = firstUseDate, now = now, zone = zone)
+
+        val firstUseDay = firstUseDate.atZone(zone).toLocalDate()
+        var best = maxOf(0, ChronoUnit.DAYS.between(firstUseDay, firstIncident).toInt())
+
+        for ((previous, next) in incidentDays.zipWithNext()) {
+            val gap = ChronoUnit.DAYS.between(previous, next).toInt() - 1
+            best = maxOf(best, gap)
+        }
+
+        val lastIncidentInstant = incidentDays.last().atStartOfDay(zone).toInstant()
+        val current = daysSince(lastIdiotDate = lastIncidentInstant, firstUseDate = firstUseDate, now = now, zone = zone)
+        return maxOf(best, current)
+    }
 }

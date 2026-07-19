@@ -25,6 +25,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.strive4it.greenmonkeys.logic.CharacterVoice
 import com.strive4it.greenmonkeys.logic.PlanStatus
+import com.strive4it.greenmonkeys.logic.VideoKind
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.Locale
@@ -39,6 +40,10 @@ fun PlanDetailScreen(
     planId: String,
     onDeleted: () -> Unit,
     onBack: () -> Unit,
+    onPlayVideo: (String) -> Unit = {},
+    onReliveRoast: () -> Unit = {},
+    onOpenSession: () -> Unit = {},
+    onRecordOutcome: () -> Unit = {},
     viewModel: PlanDetailViewModel = viewModel(factory = PlanDetailViewModel.factory(planId)),
 ) {
     val plan by viewModel.plan.collectAsStateWithLifecycle()
@@ -118,6 +123,40 @@ fun PlanDetailScreen(
                         if (verdict.oneChange.isNotEmpty()) {
                             Text("One change: ${verdict.oneChange}", style = MaterialTheme.typography.bodyMedium)
                         }
+                        if (verdict.note.isNotEmpty()) {
+                            Text("Note: ${verdict.note}", style = MaterialTheme.typography.bodyMedium)
+                        }
+                    }
+                }
+                item {
+                    TextButton(onClick = onReliveRoast) { Text("🔥 Relive the roast") }
+                }
+            }
+
+            if (current.verdict == null) {
+                item {
+                    Text("Get on with it", style = MaterialTheme.typography.titleMedium,
+                        modifier = Modifier.padding(top = 8.dp))
+                }
+                item {
+                    TextButton(onClick = onOpenSession) { Text("🎉 Open the session screen") }
+                }
+                item {
+                    TextButton(onClick = onRecordOutcome) { Text("🌅 Record the outcome") }
+                }
+            }
+
+            if (current.videos.isNotEmpty()) {
+                item {
+                    Text("Videos", style = MaterialTheme.typography.titleMedium,
+                        modifier = Modifier.padding(top = 8.dp))
+                }
+                items(current.videos, key = { "video-${it.id}" }) { video ->
+                    TextButton(onClick = { onPlayVideo(video.fileName) }) {
+                        Text(
+                            "▶️ " + (VideoKind.fromRaw(video.kind)?.label ?: "Video") + " — " +
+                                video.recordedAt.atZone(ZoneId.systemDefault()).format(formatter)
+                        )
                     }
                 }
             }
@@ -134,6 +173,7 @@ fun PlanDetailScreen(
             }
         }
 
+        // iOS parity footer: "Deleting is allowed. Forgetting is not guaranteed."
         if (deleteStage > 0) {
             AlertDialog(
                 onDismissRequest = { deleteStage = 0 },

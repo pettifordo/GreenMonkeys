@@ -7,6 +7,7 @@ import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.strive4it.greenmonkeys.GreenMonkeysApp
+import com.strive4it.greenmonkeys.capture.VideoStore
 import com.strive4it.greenmonkeys.data.PlanRepository
 import com.strive4it.greenmonkeys.data.PlanWithDetails
 import com.strive4it.greenmonkeys.notifications.NudgeScheduler
@@ -19,6 +20,7 @@ class PlanDetailViewModel(
     private val planId: String,
     private val repository: PlanRepository,
     private val scheduler: NudgeScheduler,
+    private val videoStore: VideoStore,
 ) : ViewModel() {
 
     val plan: StateFlow<PlanWithDetails?> = repository.observePlan(planId)
@@ -28,6 +30,10 @@ class PlanDetailViewModel(
     fun delete(onDone: () -> Unit) {
         viewModelScope.launch {
             repository.getPlan(planId)?.let { current ->
+                // The videos die with the plan — files included (SPEC §5).
+                for (video in current.videos) {
+                    videoStore.delete(video.fileName)
+                }
                 scheduler.cancel(current)
                 repository.deletePlan(current.plan)
             }
@@ -39,7 +45,7 @@ class PlanDetailViewModel(
         fun factory(planId: String): ViewModelProvider.Factory = viewModelFactory {
             initializer {
                 val app = checkNotNull(this[APPLICATION_KEY]) as GreenMonkeysApp
-                PlanDetailViewModel(planId, app.planRepository, app.nudgeScheduler)
+                PlanDetailViewModel(planId, app.planRepository, app.nudgeScheduler, app.videoStore)
             }
         }
     }

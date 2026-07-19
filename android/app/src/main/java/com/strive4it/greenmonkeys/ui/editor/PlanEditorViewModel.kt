@@ -80,6 +80,7 @@ class PlanEditorViewModel(
     private val repository: PlanRepository,
     private val settings: SettingsRepository,
     private val scheduler: NudgeScheduler,
+    private val videoStore: com.strive4it.greenmonkeys.capture.VideoStore,
 ) : ViewModel() {
 
     companion object {
@@ -88,7 +89,7 @@ class PlanEditorViewModel(
         val Factory: ViewModelProvider.Factory = viewModelFactory {
             initializer {
                 val app = checkNotNull(this[APPLICATION_KEY]) as GreenMonkeysApp
-                PlanEditorViewModel(app.planRepository, app.settings, app.nudgeScheduler)
+                PlanEditorViewModel(app.planRepository, app.settings, app.nudgeScheduler, app.videoStore)
             }
         }
     }
@@ -149,6 +150,14 @@ class PlanEditorViewModel(
 
     fun attachPlanVideo(fileName: String) =
         _uiState.update { it.copy(planVideoFileName = fileName) }
+
+    /** Cancel discards an unsaved recording — no orphaned files (iOS parity). */
+    fun discardUnsavedVideo() {
+        val state = _uiState.value
+        if (!state.saved) {
+            state.planVideoFileName?.let(videoStore::delete)
+        }
+    }
 
     fun toggleReminder(minutes: Int) {
         _uiState.update { state ->

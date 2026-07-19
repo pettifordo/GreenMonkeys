@@ -10,6 +10,9 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -185,6 +188,29 @@ fun SettingsScreen(
                 }
             }
             item { Footer("The built-in charges can't be removed. The law is the law.") }
+
+            item { SectionHeader("Your record before the app") }
+            item {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("Longest streak to beat", modifier = Modifier.weight(1f))
+                    OutlinedTextField(
+                        value = if (state.seedLongestStreak == 0) "" else "${state.seedLongestStreak}",
+                        onValueChange = { text ->
+                            viewModel.setSeedLongestStreak(text.filter { it.isDigit() }.toIntOrNull() ?: 0)
+                        },
+                        placeholder = { Text("0") },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        modifier = Modifier.width(100.dp),
+                    )
+                    Text("days", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            }
+            item {
+                Footer(
+                    "Already know your longest clean run? Enter it and the app won't call a new " +
+                        "personal best until you've beaten it. A challenge from past-you to future-you."
+                )
+            }
 
             item { SectionHeader("The morning after") }
             item {

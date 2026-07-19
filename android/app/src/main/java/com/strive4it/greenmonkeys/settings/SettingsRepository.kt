@@ -32,6 +32,7 @@ class SettingsRepository(private val context: Context) {
         val morningAfterHour = intPreferencesKey("morningAfterHour")
         val appLockEnabled = booleanPreferencesKey("appLockEnabled")
         val firstUseDate = longPreferencesKey("firstUseDate")
+        val seedLongestStreak = intPreferencesKey("seedLongestStreak")
         val customPromises = stringPreferencesKey("customPromises")
         val customCrimes = stringPreferencesKey("customCrimes")
     }
@@ -64,6 +65,13 @@ class SettingsRepository(private val context: Context) {
     /** Default ON: this app holds videos of you drunk (SPEC §5). */
     val appLockEnabled: Flow<Boolean> =
         context.settingsStore.data.map { it[Keys.appLockEnabled] ?: true }
+
+    /** "Your record before the app": no personal best is called until this is beaten. */
+    val seedLongestStreak: Flow<Int> =
+        context.settingsStore.data.map { it[Keys.seedLongestStreak] ?: 0 }
+
+    suspend fun setSeedLongestStreak(value: Int) =
+        edit { it[Keys.seedLongestStreak] = maxOf(0, value) }
 
     suspend fun setInsultWord(value: String) = edit { it[Keys.insultWord] = value }
     suspend fun setSessionNoun(value: String) = edit { it[Keys.sessionNoun] = value }

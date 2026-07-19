@@ -1,5 +1,8 @@
 package com.strive4it.greenmonkeys.ui.morning
 
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -51,6 +54,14 @@ fun MorningAfterScreen(
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     var newCrime by remember { mutableStateOf("") }
+    val videoPicker = rememberLauncherForActivityResult(
+        ActivityResultContracts.PickVisualMedia()
+    ) { uri -> uri?.let(viewModel::importDrunkVideo) }
+    val onImportVideo = {
+        videoPicker.launch(
+            PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.VideoOnly)
+        )
+    }
 
     LaunchedEffect(recordedVideoFileName) {
         recordedVideoFileName?.let {
@@ -113,11 +124,30 @@ fun MorningAfterScreen(
                     )
                 }
                 if (drunk == null) {
+                    // Retro sessions couldn't have recorded in-app — don't accuse.
+                    if (!state.isUnplanned) {
+                        item {
+                            Text(
+                                "No drunk video recorded. Suspiciously tidy, or too far gone to film?",
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                    }
                     item {
-                        Text(
-                            "No drunk video recorded. Suspiciously tidy, or too far gone to film?",
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
+                        TextButton(onClick = onImportVideo) {
+                            Text(
+                                if (state.isUnplanned) "⬇️ Add a video from last night"
+                                else "⬇️ Import one from your library"
+                            )
+                        }
+                    }
+                    if (state.isUnplanned) {
+                        item {
+                            Footer(
+                                "Someone filmed it, didn't they. Add it to the evidence — " +
+                                    "imports stay on this phone like everything else."
+                            )
+                        }
                     }
                 }
             }

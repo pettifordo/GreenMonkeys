@@ -24,6 +24,7 @@ data class SettingsUiState(
     val brutality: Brutality = Brutality.STANDARD,
     val morningAfterHour: Int = 9,
     val appLockEnabled: Boolean = true,
+    val seedLongestStreak: Int = 0,
     val customPromises: List<String> = emptyList(),
     val customCrimes: List<String> = emptyList(),
     val canScheduleExactAlarms: Boolean = true,
@@ -48,6 +49,7 @@ class SettingsViewModel(
         settings.brutality,
         settings.morningAfterHour,
         settings.appLockEnabled,
+        settings.seedLongestStreak,
         settings.customPromises,
         settings.customCrimes,
     ) { values ->
@@ -58,8 +60,9 @@ class SettingsViewModel(
             brutality = values[2] as Brutality,
             morningAfterHour = values[3] as Int,
             appLockEnabled = values[4] as Boolean,
-            customPromises = values[5] as List<String>,
-            customCrimes = values[6] as List<String>,
+            seedLongestStreak = values[5] as Int,
+            customPromises = values[6] as List<String>,
+            customCrimes = values[7] as List<String>,
             canScheduleExactAlarms = canExact,
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), SettingsUiState(canScheduleExactAlarms = canExact))
@@ -85,6 +88,12 @@ class SettingsViewModel(
 
     fun setAppLockEnabled(value: Boolean) =
         viewModelScope.launch { settings.setAppLockEnabled(value) }
+
+    fun setSeedLongestStreak(value: Int) = viewModelScope.launch {
+        settings.setSeedLongestStreak(value)
+        // The widget's "longest" caption depends on the seed.
+        com.strive4it.greenmonkeys.widget.pushStreakWidget(application)
+    }
 
     fun removePromise(text: String) = viewModelScope.launch { settings.removeCustomPromise(text) }
     fun removeCrime(text: String) = viewModelScope.launch { settings.removeCustomCrime(text) }

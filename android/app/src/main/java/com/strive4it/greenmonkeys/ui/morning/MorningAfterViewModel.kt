@@ -39,6 +39,14 @@ data class MorningUiState(
 ) {
     val isJudged: Boolean get() = plan?.verdict != null
     val canDeliver: Boolean get() = !isJudged && score != null
+
+    /**
+     * Retro sessions (the confess flow) have no promises and no reminders —
+     * drunk-you COULDN'T have recorded in-app, so don't accuse.
+     */
+    val isUnplanned: Boolean
+        get() = plan?.commitments?.isEmpty() == true &&
+            plan.plan.reminderOffsetsMinutes.isEmpty()
 }
 
 /**
@@ -102,6 +110,35 @@ class MorningAfterViewModel(
     fun setNote(value: String) = _uiState.update { it.copy(note = value) }
     fun attachMorningVideo(fileName: String) =
         _uiState.update { it.copy(morningVideoFileName = fileName) }
+
+    /**
+     * "Someone filmed it, didn't they." Copies a picked library video into
+     * private storage as drunk evidence — imports stay on this phone like
+     * everything else (SPEC §5).
+     */
+    fun importDrunkVideo(uri: android.net.Uri) {
+        val plan = _uiState.value.plan ?: return
+        viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+            val store = (appContext as GreenMonkeysApp).videoStore
+            val temp = store.newTempFile()
+            try {
+                appContext.contentResolver.openInputStream(uri)?.use { input ->
+                    temp.outputStream().use { output -> input.copyTo(output) }
+                } ?: return@launch
+                val fileName = store.store(temp)
+                repository.addVideo(
+                    SessionVideoEntity(
+                        planId = plan.plan.id,
+                        kind = VideoKind.DRUNK.rawValue,
+                        fileName = fileName,
+                    )
+                )
+                _uiState.update { it.copy(plan = repository.getPlan(plan.plan.id)) }
+            } finally {
+                temp.delete()
+            }
+        }
+    }
 
     /** Anything confessed is remembered for future mornings (SPEC §2a). */
     fun confessCustomCrime(text: String) {

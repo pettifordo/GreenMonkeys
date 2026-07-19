@@ -14,6 +14,8 @@ data class StreakSnapshot(
     val hasIdiotHistory: Boolean,
     val firstUseDate: Instant,
     val insultWord: String,
+    /** Best clean run ever, precomputed by the app (incl. the seeded record). */
+    val longestStreak: Int = 0,
 ) {
     fun days(now: Instant = Instant.now()): Int =
         StreakService.daysSince(lastIdiotDate = anchorDate, firstUseDate = firstUseDate, now = now)
@@ -28,6 +30,7 @@ object StreakSnapshotStore {
             .putBoolean("hasHistory", snapshot.hasIdiotHistory)
             .putLong("firstUse", snapshot.firstUseDate.toEpochMilli())
             .putString("word", snapshot.insultWord)
+            .putInt("longest", snapshot.longestStreak)
             .apply()
     }
 
@@ -41,6 +44,7 @@ object StreakSnapshotStore {
                 prefs.getLong("firstUse", Instant.now().toEpochMilli())
             ),
             insultWord = prefs.getString("word", "idiot") ?: "idiot",
+            longestStreak = prefs.getInt("longest", 0),
         )
     }
 }
