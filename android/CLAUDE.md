@@ -61,21 +61,28 @@ android/
     ├── settings/                # DataStore: word/noun/brutality/hour/lock + catalogs
     ├── notifications/           # NudgeScheduler (AlarmManager) + Nudge/Boot receivers
     └── ui/                      # AppNavHost (ONE graph), home/, editor/, detail/, theme/
-    src/test/java/.../logic/     # 47 JVM tests (27 ported 1:1 + 20 new)
+    src/test/java/.../logic/     # 66 JVM tests (all pure logic; ported 1:1 from iOS)
 ```
 
-**v1 feature-complete (2026-07-15), all screens live:** Home, plan editor,
+**At parity with iOS 1.1 (2026-07-19), all screens live:** Home, plan editor,
 session-live, morning-after debrief, verdict/roast, unplanned confession,
-pattern (Canvas charts — clean nights are green dots, dashed average),
-settings (incl. exact-alarm rationale row shown while SCHEDULE_EXACT_ALARM
-is denied), CameraX front-camera recorder (120s cap) + `capture/VideoStore`
-(filesDir/videos) + VideoView playback, BiometricPrompt lock (default ON;
-fails OPEN when no PIN/biometric enrolled — never brick the app), Glance
-streak widget (anchor-date-only snapshot, WorkManager midnight refresh).
-Verified end-to-end on emulator: confess → score → roast → Finish unwinds
-to Home with red 0. Not yet done: Play listing assets/adaptive icon,
-screenshot rig, docs/ wording update for Android, real-device camera test
-(emulator uses the fake camera).
+pattern, settings, CameraX front-camera recorder (120s cap) +
+`capture/VideoStore` (filesDir/videos) + VideoView playback, BiometricPrompt
+lock (default ON; fails OPEN when no PIN/biometric enrolled — never brick the
+app), Glance streak widget (anchor-date-only snapshot, WorkManager midnight
+refresh), adaptive launcher icon (from `Tools/draw_icon.swift` geometry).
+
+iOS 1.1 delta features present: `StreakService.longestStreak` +
+seedLongestStreak ("record before the app") on Home card / pattern / widget;
+pattern chart rework (Night/Week/Month/Year period picker, `PatternService`
+`aggregate`/`trend` with dashed forecast + Monkey commentary, plain blue line);
+Home swipe-to-delete with status-aware confirmation; library video import on
+the debrief; debug `DemoSeeder` (mirrors iOS `ScreenshotRig`) via
+`am start ... --ez demoData true --es screen <home|editor|session|morning|roast|pattern|settings>`.
+
+Not yet done: Play listing store assets (feature graphic, screenshots),
+docs/ wording update for Android, real-device camera test (emulator uses the
+fake camera).
 
 ## Hard rules (same as iOS — root CLAUDE.md rules all apply)
 
