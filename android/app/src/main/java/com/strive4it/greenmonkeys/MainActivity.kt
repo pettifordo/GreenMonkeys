@@ -128,40 +128,55 @@ class MainActivity : FragmentActivity() {
     }
 
     private fun authenticate() {
-        // Nothing enrolled (no PIN, no biometrics): the lock cannot protect
-        // anything and must not brick the app.
-        val authenticators = BIOMETRIC_WEAK or DEVICE_CREDENTIAL
-        if (BiometricManager.from(this).canAuthenticate(authenticators) !=
-            BiometricManager.BIOMETRIC_SUCCESS
-        ) {
-            locked = false
-            return
-        }
-        val prompt = BiometricPrompt(
-            this,
-            ContextCompat.getMainExecutor(this),
-            object : BiometricPrompt.AuthenticationCallback() {
-                override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult) {
-                    locked = false
-                }
+        // A lock must never be able to brick launch: any failure fails OPEN
+        // (app usable, lock skipped) rather than crashing.
+        try {
+            // Nothing enrolled (no PIN, no biometrics): the lock can't protect
+            // anything, so don't stand in the way.
+            val authenticators = BIOMETRIC_WEAK or DEVICE_CREDENTIAL
+            if (BiometricManager.from(this).canAuthenticate(authenticators) !=
+                BiometricManager.BIOMETRIC_SUCCESS
+            ) {
+                locked = false
+                return
+            }
 
-                override fun onAuthenticationError(errorCode: Int, errString: CharSequence) {
-                    // Credential setup vanished mid-flight: fail open rather than brick.
-                    // User cancellation keeps the lock screen (Unlock retries).
-                    if (errorCode == BiometricPrompt.ERROR_NO_DEVICE_CREDENTIAL ||
-                        errorCode == BiometricPrompt.ERROR_NO_BIOMETRICS ||
-                        errorCode == BiometricPrompt.ERROR_HW_NOT_PRESENT
-                    ) {
+            // The biometric library commits a fragment transaction. Firing it
+            // while the FragmentManager has saved state (e.g. racing the
+            // POST_NOTIFICATIONS dialog on first launch) throws
+            // "after onSaveInstanceState" and crashed the app on Android 13+.
+            // Skip now; the LockScreen's Unlock button retries once resumed.
+            if (supportFragmentManager.isStateSaved) return
+
+            val prompt = BiometricPrompt(
+                this,
+                ContextCompat.getMainExecutor(this),
+                object : BiometricPrompt.AuthenticationCallback() {
+                    override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult) {
                         locked = false
                     }
-                }
-            },
-        )
-        val info = BiometricPrompt.PromptInfo.Builder()
-            .setTitle("Green Monkeys is locked")
-            .setSubtitle("Your videos stay between you and the Monkeys.")
-            .setAllowedAuthenticators(authenticators)
-            .build()
-        prompt.authenticate(info)
+
+                    override fun onAuthenticationError(errorCode: Int, errString: CharSequence) {
+                        // Credential setup vanished mid-flight: fail open rather than brick.
+                        // User cancellation keeps the lock screen (Unlock retries).
+                        if (errorCode == BiometricPrompt.ERROR_NO_DEVICE_CREDENTIAL ||
+                            errorCode == BiometricPrompt.ERROR_NO_BIOMETRICS ||
+                            errorCode == BiometricPrompt.ERROR_HW_NOT_PRESENT
+                        ) {
+                            locked = false
+                        }
+                    }
+                },
+            )
+            val info = BiometricPrompt.PromptInfo.Builder()
+                .setTitle("Green Monkeys is locked")
+                .setSubtitle("Your videos stay between you and the Monkeys.")
+                .setAllowedAuthenticators(authenticators)
+                .build()
+            prompt.authenticate(info)
+        } catch (t: Throwable) {
+            // Better an unlocked app than a dead one.
+            locked = false
+        }
     }
 }
