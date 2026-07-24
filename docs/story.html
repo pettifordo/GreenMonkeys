@@ -22,16 +22,16 @@
 
     <main class="doc">
         <h1>Good Owen vs Bad Owen</h1>
-        <p class="updated">Green Monkeys was built by Owen — 9 years sober. This is the story he
-        wrote for One Year No Beer after his first two years alcohol-free, unedited in spirit,
-        lightly tidied in spelling. The app is the tool he wishes he'd had: something to help
-        Good Owen keep Bad Owen at bay.</p>
+        <p class="updated">Green Monkeys was built by Owen — <span id="years-sober">9</span> years sober.
+        This is the story he wrote for One Year No Beer after his first two years alcohol-free,
+        unedited in spirit, lightly tidied in spelling. The app is the tool he wishes he'd had:
+        something to help Good Owen keep Bad Owen at bay.</p>
 
         <div class="hero" style="padding: 10px 0 24px;">
             <div class="counter">
-                <div class="label">Days since Owen's last TDE</div>
-                <div class="num" id="tde-counter">3,000+</div>
-                <div class="label">counting since 31 August 2017 — no resets</div>
+                <div class="label">Owen's days alcohol-free</div>
+                <div class="num" id="sober-counter">3,200+</div>
+                <div class="label">sober since 1 September 2017 — no resets</div>
             </div>
         </div>
 
@@ -115,9 +115,11 @@
 </div>
 <script>
     (function () {
-        var start = new Date("2017-08-31T00:00:00");
-        var days = Math.floor((Date.now() - start.getTime()) / 86400000);
-        document.getElementById("tde-counter").textContent = days.toLocaleString("en-GB");
+        var start = new Date("2017-09-01T00:00:00");
+        var now = new Date();
+        var days = Math.floor((now.getTime() - start.getTime()) / 86400000);
+        document.getElementById("sober-counter").textContent = days.toLocaleString("en-GB");
+        document.getElementById("years-sober").textContent = now.getFullYear() - start.getFullYear();
     })();
 </script>
 </body>

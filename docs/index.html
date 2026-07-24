@@ -88,8 +88,8 @@
             <p style="max-width: 620px; margin: 10px auto 0;">
                 "Every 2–3 months I would do or say something that would make me cringe in the
                 morning and damage my relationships with the people I loved. I called these
-                <strong>Total Dickhead Events</strong>." — Owen, founder. Nine years sober,
-                zero resets, and this is the app he wishes he'd had — to help Good Owen keep
+                <strong>Total Dickhead Events</strong>." — Owen, founder. <span id="years-sober">Nine</span> years
+                sober, zero resets, and this is the app he wishes he'd had — to help Good Owen keep
                 Bad Owen at bay.
             </p>
             <p style="margin-top: 14px;">
@@ -118,5 +118,12 @@
         </div>
     </footer>
 </div>
+<script>
+    (function () {
+        var start = new Date("2017-09-01T00:00:00");
+        var now = new Date();
+        document.getElementById("years-sober").textContent = now.getFullYear() - start.getFullYear();
+    })();
+</script>
 </body>
 </html>
