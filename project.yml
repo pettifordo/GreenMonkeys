@@ -24,13 +24,13 @@ targets:
         INFOPLIST_FILE: GreenMonkeys/Info.plist
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         CURRENT_PROJECT_VERSION: 1
-        MARKETING_VERSION: "1.1"
+        MARKETING_VERSION: "2.0"
         CODE_SIGN_STYLE: Automatic
     info:
       path: GreenMonkeys/Info.plist
       properties:
         CFBundleDisplayName: Green Monkeys
-        CFBundleShortVersionString: "1.1"
+        CFBundleShortVersionString: "2.0"
         CFBundleVersion: "1"
         NSCameraUsageDescription: "Green Monkeys uses the camera so you can record your plan, session, and morning-after videos. Videos never leave your phone."
         NSMicrophoneUsageDescription: "The microphone records sound with your videos. Recordings never leave your phone."
@@ -69,13 +69,13 @@ targets:
         INFOPLIST_FILE: GreenMonkeysWatch/Info.plist
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         CURRENT_PROJECT_VERSION: 1
-        MARKETING_VERSION: "1.1"
+        MARKETING_VERSION: "2.0"
         CODE_SIGN_STYLE: Automatic
     info:
       path: GreenMonkeysWatch/Info.plist
       properties:
         CFBundleDisplayName: Green Monkeys
-        CFBundleShortVersionString: "1.1"
+        CFBundleShortVersionString: "2.0"
         CFBundleVersion: "1"
         WKCompanionAppBundleIdentifier: com.strive4it.greenmonkeys
         WKApplication: true
@@ -94,7 +94,7 @@ targets:
         TARGETED_DEVICE_FAMILY: 1
         INFOPLIST_FILE: GreenMonkeysWidgets/Info.plist
         CURRENT_PROJECT_VERSION: 1
-        MARKETING_VERSION: "1.1"
+        MARKETING_VERSION: "2.0"
         CODE_SIGN_STYLE: Automatic
     entitlements:
       path: GreenMonkeysWidgets/GreenMonkeysWidgets.entitlements
@@ -105,7 +105,7 @@ targets:
       path: GreenMonkeysWidgets/Info.plist
       properties:
         CFBundleDisplayName: Green Monkeys
-        CFBundleShortVersionString: "1.1"
+        CFBundleShortVersionString: "2.0"
         CFBundleVersion: "1"
         NSExtension:
           NSExtensionPointIdentifier: com.apple.widgetkit-extension
