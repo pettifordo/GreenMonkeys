@@ -16,13 +16,26 @@ struct RootView: View {
         #endif
         return !AppSettings.appLockEnabled
     }()
+    @State private var needsOnboarding: Bool = {
+        #if DEBUG
+        if ScreenshotRig.isActive { return false }
+        #endif
+        return !UserDefaults.standard.bool(forKey: SettingsKey.hasOnboarded)
+    }()
     @State private var recordingPlan: SessionPlan?
     @State private var debriefPlan: SessionPlan?
 
     var body: some View {
         @Bindable var router = router
         return ZStack {
-            if unlocked {
+            if needsOnboarding {
+                OnboardingView { askNotifications in
+                    needsOnboarding = false
+                    if askNotifications {
+                        Task { _ = await NotificationService.shared.requestAuthorization() }
+                    }
+                }
+            } else if unlocked {
                 HomeView()
             } else {
                 LockView(onUnlocked: { unlocked = true })

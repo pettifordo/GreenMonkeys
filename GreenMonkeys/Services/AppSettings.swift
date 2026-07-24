@@ -11,6 +11,11 @@ enum SettingsKey {
     static let appLockEnabled = "appLockEnabled"
     static let firstUseDate = "firstUseDate"
     static let seedLongestStreak = "seedLongestStreak"
+    static let hasOnboarded = "hasOnboarded"
+    /// Self-declared current-streak start, as timeIntervalSince1970. 0 = unset.
+    static let streakStartTime = "streakStartTime"
+    /// How many times the start date has been moved — feeds escalating snark.
+    static let streakStartEdits = "streakStartEdits"
 }
 
 enum AppSettings {
@@ -49,7 +54,7 @@ enum AppSettings {
         max(0, UserDefaults.standard.integer(forKey: SettingsKey.seedLongestStreak))
     }
 
-    /// Anchor for the streak before any idiot verdict exists. Set once on first launch.
+    /// Install date. Set once on first launch.
     static var firstUseDate: Date {
         if let stored = UserDefaults.standard.object(forKey: SettingsKey.firstUseDate) as? Date {
             return stored
@@ -57,5 +62,18 @@ enum AppSettings {
         let now = Date()
         UserDefaults.standard.set(now, forKey: SettingsKey.firstUseDate)
         return now
+    }
+
+    /// The user's self-declared current-streak start, if they set one in
+    /// onboarding or Settings. nil = never set (count from install).
+    static var streakStartDate: Date? {
+        let stored = UserDefaults.standard.double(forKey: SettingsKey.streakStartTime)
+        return stored > 0 ? Date(timeIntervalSince1970: stored) : nil
+    }
+
+    /// The clean-run anchor used everywhere streak days are computed:
+    /// the declared start if given, otherwise install day.
+    static var streakAnchorDate: Date {
+        streakStartDate ?? firstUseDate
     }
 }

@@ -49,6 +49,11 @@ Home screen headline: **"Days since you were a(n) [WORD]"**.
   day 1. (Confess Saturday morning → 0; clean Saturday night → 1 on Sunday.)
 - If no idiot verdict has ever been recorded, count plainly from first app use
   (no hangover-day shift — nothing happened).
+- **Existing streak**: users already sober can declare a `streakStartDate` (in
+  onboarding or Settings) so the counter starts from that date, not install.
+  All streak maths use `streakAnchorDate = streakStartDate ?? firstUseDate`.
+  Editable but each change triggers escalating Monkey snark ("moving the
+  goalposts") — the honesty is the point.
 - **Longest streak** is shown on the home card, pattern screen, and widget:
   `max(best run the app has witnessed, user-seeded pre-app record)`. The seed
   ("Longest streak to beat", Settings) lets users challenge their own history;
@@ -71,6 +76,13 @@ Home screen headline: **"Days since you were a(n) [WORD]"**.
   Drunk texting, Lost phone/wallet/keys) plus user-added customs, which are
   remembered for future mornings. Customs removable in Settings; built-ins are
   not ("the law is the law").
+
+## 2b. Onboarding
+
+Shown once on first launch (re-openable from Settings → "How it works"): the
+concept, the two characters, Owen's story (linking to the site), and the
+option to declare an existing sober streak. Notification permission is
+requested at the end of this flow, in context — never cold on launch.
 
 ## 3. Characters and tone
 

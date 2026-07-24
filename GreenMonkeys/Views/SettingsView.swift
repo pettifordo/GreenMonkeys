@@ -8,11 +8,17 @@ struct SettingsView: View {
     @AppStorage(SettingsKey.morningAfterHour) private var morningAfterHour = 9
     @AppStorage(SettingsKey.appLockEnabled) private var appLockEnabled = true
     @AppStorage(SettingsKey.seedLongestStreak) private var seedLongestStreak = 0
+    @AppStorage(SettingsKey.streakStartTime) private var streakStartTime = 0.0
+    @AppStorage(SettingsKey.streakStartEdits) private var streakStartEdits = 0
 
     @State private var customWord = ""
     @State private var customNoun = ""
     @State private var customPromises: [String] = CatalogService.customPromises
     @State private var customCrimes: [String] = CatalogService.customCrimes
+    @State private var editingStreakStart = false
+    @State private var draftStreakStart = Date()
+    @State private var confirmingStreakMove = false
+    @State private var replayOnboarding = false
 
     var body: some View {
         Form {
@@ -132,6 +138,36 @@ struct SettingsView: View {
                 Text("Already know your longest clean run? Enter it and the app won't call a new personal best until you've beaten it. A challenge from past-you to future-you.")
             }
 
+            Section {
+                if streakStartTime > 0 {
+                    let start = Date(timeIntervalSince1970: streakStartTime)
+                    LabeledContent("Streak started", value: start.formatted(date: .abbreviated, time: .omitted))
+                    if editingStreakStart {
+                        DatePicker("Move it to", selection: $draftStreakStart, in: ...Date(), displayedComponents: .date)
+                        Button("Move the start date", role: .destructive) {
+                            confirmingStreakMove = true
+                        }
+                    } else {
+                        Button("Change start date") {
+                            draftStreakStart = start
+                            editingStreakStart = true
+                        }
+                    }
+                } else {
+                    DatePicker("My streak started", selection: $draftStreakStart, in: ...Date(), displayedComponents: .date)
+                    Button("Set my streak start") {
+                        streakStartTime = draftStreakStart.timeIntervalSince1970
+                        pushSnapshot()
+                    }
+                }
+            } header: {
+                Text("Already on a streak?")
+            } footer: {
+                Text(streakStartTime > 0
+                     ? "Day 1 counts from here, not from install. Moving it is between you and your conscience."
+                     : "Already sober? Set the date it began and the counter starts from there.")
+            }
+
             Section("The morning after") {
                 Stepper("Debrief at \(morningAfterHour):00", value: $morningAfterHour, in: 5...14)
             }
@@ -143,6 +179,11 @@ struct SettingsView: View {
             }
 
             Section("Help") {
+                Button {
+                    replayOnboarding = true
+                } label: {
+                    Label("How it works", systemImage: "sparkles")
+                }
                 Link(destination: URL(string: "https://pettifordo.github.io/GreenMonkeys/support.html") ?? URL(fileURLWithPath: "/")) {
                     Label("Help & support", systemImage: "questionmark.circle")
                 }
@@ -166,5 +207,28 @@ struct SettingsView: View {
             snapshot.save()
             WidgetCenter.shared.reloadAllTimelines()
         }
+        .alert("Move your streak start?", isPresented: $confirmingStreakMove) {
+            Button("Move it anyway", role: .destructive) {
+                streakStartTime = draftStreakStart.timeIntervalSince1970
+                streakStartEdits += 1
+                editingStreakStart = false
+                pushSnapshot()
+            }
+            Button("Leave it", role: .cancel) {}
+        } message: {
+            Text(CharacterVoice.streakStartMoveWarning(edits: streakStartEdits))
+        }
+        .fullScreenCover(isPresented: $replayOnboarding) {
+            // Replay never re-prompts for notifications.
+            OnboardingView { _ in replayOnboarding = false }
+        }
+    }
+
+    /// Recompute the widget snapshot's anchor after a streak-start change.
+    private func pushSnapshot() {
+        var snapshot = StreakSnapshot.load()
+        snapshot.firstUseDate = AppSettings.streakAnchorDate
+        snapshot.save()
+        WidgetCenter.shared.reloadAllTimelines()
     }
 }

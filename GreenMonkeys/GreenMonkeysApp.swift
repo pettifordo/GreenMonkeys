@@ -24,12 +24,8 @@ struct GreenMonkeysApp: App {
         WindowGroup {
             RootView()
                 .environment(router)
-                .task {
-                    #if DEBUG
-                    if ScreenshotRig.isActive { return }
-                    #endif
-                    _ = await NotificationService.shared.requestAuthorization()
-                }
+                // Notification permission is requested at the end of onboarding
+                // (in context), not cold on first launch.
                 .onAppear {
                     let router = router
                     NotificationService.shared.onRecordRequested = { planID in

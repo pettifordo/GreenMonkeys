@@ -18,6 +18,32 @@ roast, charts, catalogs, widget, and app lock.
 
 ## PENDING → Android
 
+### 2026-07-17 · First-run onboarding + existing-streak start (owner-requested)
+
+1. **Onboarding** — shown once on first launch (gated by `hasOnboarded`),
+   re-openable from Settings → "How it works". Four pages: Welcome (the two
+   characters), How it works (Plan/Session/Morning/Pattern), Owen's story
+   (short quote + link to the site story page), and "Already on a streak?".
+   Skippable except the last page. **Notification permission moved here** —
+   requested at the END of onboarding, not cold on launch (do the same on
+   Android: don't request POST_NOTIFICATIONS until onboarding completes).
+   Screenshot rig skips onboarding.
+2. **Existing-streak start** — a self-declared `streakStartDate` (stored as
+   epoch seconds; 0 = unset). New computed anchor
+   `AppSettings.streakAnchorDate = streakStartDate ?? firstUseDate` — EVERY
+   streak calc (home count, longest streak, widget snapshot's firstUseDate)
+   now uses the anchor, so a declared start flows everywhere with no new
+   convention. Self-declared start counts plainly (no hangover shift); a later
+   incident becomes the anchor and resets normally.
+   - Onboarding date picker with live "That's N days clean. Respect." Input is
+     a DATE (decided with owner), not a day count.
+   - Editable in Settings with **escalating snark** (decided with owner, not
+     one-off-locked): `CharacterVoice.streakStartMoveWarning(edits:)` — 3
+     tiers by `streakStartEdits` count. Onboarding only SETS when unset;
+     replay never overwrites — moving it is Settings' snark-gated job.
+
+**Status:** PENDING
+
 ### 2026-07-17 · iOS 1.1 feature batch (owner-requested)
 
 One release's worth of changes; port as a set. iOS is now marketing 1.1,

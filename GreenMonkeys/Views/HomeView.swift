@@ -52,7 +52,7 @@ struct HomeView: View {
             .map(\.sessionStart)
         return StreakService.daysSince(
             lastIdiotDate: StreakService.lastIdiotDate(idiotVerdictSessionStarts: idiotDates),
-            firstUseDate: AppSettings.firstUseDate
+            firstUseDate: AppSettings.streakAnchorDate
         )
     }
 
@@ -60,7 +60,7 @@ struct HomeView: View {
         max(
             StreakService.longestStreak(
                 idiotDates: plans.filter { ($0.verdict?.effectiveScore ?? 0) > 0 }.map(\.sessionStart),
-                firstUseDate: AppSettings.firstUseDate
+                firstUseDate: AppSettings.streakAnchorDate
             ),
             seedLongestStreak
         )
@@ -335,7 +335,7 @@ struct HomeView: View {
         StreakSnapshot(
             anchorDate: StreakService.lastIdiotDate(idiotVerdictSessionStarts: idiotDates),
             hasIdiotHistory: !idiotDates.isEmpty,
-            firstUseDate: AppSettings.firstUseDate,
+            firstUseDate: AppSettings.streakAnchorDate,
             insultWord: insultWord,
             longestStreak: longestStreak
         ).save()

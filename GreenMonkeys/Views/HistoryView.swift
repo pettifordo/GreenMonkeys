@@ -32,7 +32,7 @@ struct HistoryView: View {
         max(
             StreakService.longestStreak(
                 idiotDates: plans.filter { ($0.verdict?.effectiveScore ?? 0) > 0 }.map(\.sessionStart),
-                firstUseDate: AppSettings.firstUseDate
+                firstUseDate: AppSettings.streakAnchorDate
             ),
             seedLongestStreak
         )

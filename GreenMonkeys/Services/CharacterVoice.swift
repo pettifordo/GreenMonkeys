@@ -262,6 +262,21 @@ enum CharacterVoice {
         """
     }
 
+    // MARK: - Streak start date
+
+    /// Escalating snark for moving the self-declared streak start (SPEC §2).
+    /// `edits` is how many times it has already been changed.
+    static func streakStartMoveWarning(edits: Int) -> String {
+        switch edits {
+        case 0:
+            return "Moving your start date is between you and your conscience. The Monkeys will note the adjustment. Carry on?"
+        case 1:
+            return "Second time you've moved the goalposts. The only person you're fooling is the one holding the phone. Sure?"
+        default:
+            return "The Monkeys have stopped believing this number. Change it again if you like — it's your streak to lie to."
+        }
+    }
+
     // MARK: - Deletion friction
 
     /// Two-stage sarcasm for anyone trying to erase history (SPEC hard rule 3).
